@@ -4,14 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-/*
-TODO:
 
-- use memcpy to speed up the code exec ?
-
-
-
-*/
 ////////////////////////////////////
 /////         FW CONFIG        /////
 ////////////////////////////////////
