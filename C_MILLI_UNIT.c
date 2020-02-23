@@ -72,7 +72,7 @@ static inline uint16_t GetCommand(char * COMMAND_TYPED)
     return commandIndex;
 }
 
-#define RUN_CMD(COMMAND_TYPED)              commands[GetCommand(COMMAND_TYPED)].callback(1,2)
+#define RUN_CMD(COMMAND_TYPED)              do{ if(commands[GetCommand(COMMAND_TYPED)].callback != NULL){ commands[GetCommand(COMMAND_TYPED)].callback(1,2); } else {LOG_LINE("Error: callback not implemented");}}while(0)
 #define RUN_STEP(STEP_NAME)                 do{ LOG_LINE(#STEP_NAME" - setup"); _##STEP_NAME(1,2); LOG_LINE(#STEP_NAME" - teardown"); APPEND_LOG(LOG_LINE_BEGIN_WITH); APPEND_LOG("\n");}while(0)      
 
 #define INIT_LOG()                          static char messageBuffer[LOG_SIZE]
@@ -104,8 +104,8 @@ STEP(toto_nominal,
     int a = 1;
     int b = 1;
     int ret = add(1,1);
-    EXPECT_EQ(add_pass,ret,2);
-    //EXPECT_EQ(add_fails,ret,3);
+    //EXPECT_EQ(add_pass,ret,2);
+    EXPECT_EQ(add_fails,ret,3);
 )
 
 STEP(toto_degraded,
