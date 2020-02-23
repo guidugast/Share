@@ -12,11 +12,17 @@ TODO:
 
 
 */
-
+////////////////////////////////////
+/////         FW CONFIG        /////
+////////////////////////////////////
 #define LOG_SIZE                1024
 #define LOG_LINE_SIZE           64
 #define LOG_LINE_BEGIN_WITH     "M0@ : "
 
+
+////////////////////////////////////
+/////          lISTING         /////
+////////////////////////////////////
 #define STEP_LIST(X) \
         X(toto) \
         //end of list
@@ -27,6 +33,9 @@ TODO:
         //end of list
 
 
+////////////////////////////////////
+/////         FRAMEWORK        /////
+////////////////////////////////////
 typedef void (*callback_t)(int a, int b);
 
 typedef struct 
@@ -54,7 +63,7 @@ static inline uint16_t GetCommand(char * COMMAND_TYPED)
     uint16_t commandIndex;
     for(commandIndex = 0; commandIndex < sizeof(commands)/sizeof(command_t) ; commandIndex++)
     { 
-        if(!strcmp(COMMAND_TYPED,commands[commandIndex].name))
+        if(!memcmp(COMMAND_TYPED,commands[commandIndex].name,sizeof(commands[commandIndex].name)))
         {
             commandFound=true;
             break;
@@ -73,20 +82,23 @@ static inline uint16_t GetCommand(char * COMMAND_TYPED)
 
 
 #define EXPECT_EQ(name,observed,expected)   do{if(expected==observed){LOG_LINE("- "#name" : OK");}else{LOG_LINE("- "#name" : FAILS - expected %d / observed %d",expected,observed);}}while(0)
-#define STEP(STEP_NAME,CODE)                void _##STEP_NAME(int A, int B) { CODE }
+#define STEP(STEP_NAME,CODE)                static inline void _##STEP_NAME(int A, int B) { CODE }
 #define COMMAND(COMMAND_NAME,CODE)          void _##COMMAND_NAME(int A, int B) { LOG_LINE("------------- Running command: "#COMMAND_NAME" -------------"); CODE LOG_LINE("------------- End of command: "#COMMAND_NAME" -------------"); LOG_LINE(" "); }
 
 
 INIT_LOG();
 
+////////////////////////////////////
+///////////     API    /////////////
+////////////////////////////////////
 short add(int x, int y)
 {
     return x+y;
 }
 
-COMMAND(help,
-    LOG_LINE("this is help");
-)
+////////////////////////////////////
+///////////    STEPS   /////////////
+////////////////////////////////////
 
 STEP(toto_nominal,
     int a = 1;
@@ -101,12 +113,23 @@ STEP(toto_degraded,
 )
 
 
+////////////////////////////////////
+///////////  COMMANDS  /////////////
+////////////////////////////////////
+
+COMMAND(help,
+    LOG_LINE("this is help");
+)
+
 COMMAND(toto_all,
     RUN_STEP(toto_nominal);
     RUN_STEP(toto_degraded);
 )
 
 
+////////////////////////////////////
+///////////    MAIN    /////////////
+////////////////////////////////////
 int main()
 {
     RUN_CMD("help");
