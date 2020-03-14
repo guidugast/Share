@@ -68,11 +68,13 @@
 #define ARRAY_PRINT_(data,type)      do{ \
                                         type gen_buf_[sizeof(data)]; \
                                         memcpy(gen_buf_,(type*)&data,sizeof(data)); \
-                                        RLV_LOG_APPEND(#type" "#data"[] = "); \
+                                        RLV_LOG_APPEND(#type" "#data"[] = {"); \
                                         for(uint32_t igen_ = 0; igen_<sizeof(data)/sizeof(type);igen_++) \
                                         {  \
-                                            RLV_LOG_LINE("0x%x,",gen_buf_[igen_]); \
+                                            RLV_LOG_LINE("0x%x",gen_buf_[igen_]); \
+                                            (igen_+1<sizeof(data)/sizeof(type)) && RLV_LOG_LINE(","); \
                                         } \
+                                        RLV_LOG_APPEND("}"); \
                                     }while(0)
 
 #define GENERIC_PRINT(data,type)    do { switch(GET_TYPE_(data,type)){ \
@@ -148,7 +150,7 @@
                                                                         memcpy(&(arg),&paramBuf_,sizeof(type)); \
                                                                      } 
             
-#define RLV_SET_PARAM(type, paramName, argListIndex)                do { \
+#define RLV_SET_PARAM_TO_CMD_ARG(type, paramName, argListIndex)      do { \
                                                                            if(!strcmp(argList[argListIndex],"D"))   \
                                                                            {   \
                                                                                memcpy(&RLV_BLE_Parameters.paramName,&RLV_BLE_DefaultParameters.paramName,sizeof(RLV_BLE_DefaultParameters.paramName)); \
@@ -170,7 +172,7 @@
 //////////////////////////////////////////////////////////////                   
                                                                        
 #define VALID_RLV_SET_PARAM(type, paramName, argListIndex)       do{ \
-                                                                 RLV_SET_PARAM(type, paramName, argListIndex); \
+                                                                 RLV_SET_PARAM_TO_CMD_ARG(type, paramName, argListIndex); \
                                                                  GENERIC_PRINT(RLV_BLE_Parameters.paramName,type); \
                                                                  }while(0)
 typedef struct
@@ -205,8 +207,20 @@ typedef struct
     uint8_t bar_wrong_type2[] = {1,2,3};
     uint16_t bar_wrong_size[] = {1,2,3,4};
     
+    #define TEST_ARG_ROBUSTNESS 0
+    #if TEST_ARG_ROBUSTNESS
     char * argList[] = {"D","P","","15","0xFFFFFFFFFFFFFFF","T","F","0xFF","#2,4,6,8#","##","#A,B,C,D,E#","1,2,3"};
-   
+    #else
+    char * argList[] = {"0xFF" , "#A,B,C,D,E#" , "T", //valid --> new values
+                        "D"    , "D"           , "D", //default --> back to default values 
+                        "15"   , "#2,4,6,8#"   , "T", //valid --> new values 
+                        "P"    , "P"           , "P", //preset --> keep last values
+                        "TEST" , "ABCDE"       , "Z", //wrong values --> keep last values
+                       };
+    #endif 
+    
+
+    
     #define RLV_LOG_DEBUG                     printf
     #define RLV_LOG_APPEND                    printf
     #define RLV_LOG_LINE                      printf
@@ -216,11 +230,36 @@ typedef struct
     #define RLV_BLE_Parameters            MyStruct1
     #define RLV_BLE_DefaultParameters     MyStruct2
     
+    #define TEST(TEST_NAME,code) void test_##TEST_NAME (void) { uint8_t argListIndex_= 0; code }          
+    #define VALID_RLV_SET_PARAM_AUTO(type, paramName) do{ VALID_RLV_SET_PARAM(type, paramName, argListIndex_); argListIndex_++; }while(0)
+TEST(toto,
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,foo);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,bar);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(bool,blah);printf("\n------\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,foo);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,bar);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(bool,blah);printf("\n------\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,foo);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,bar);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(bool,blah);printf("\n------\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,foo);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,bar);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(bool,blah);printf("\n------\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,foo);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(uint16_t,bar);printf("\n");
+    VALID_RLV_SET_PARAM_AUTO(bool,blah);printf("\n------\n");
+)
+
 int main()
 {
     
-    
-    
+    if(!TEST_ARG_ROBUSTNESS)
+    {
+    printf("----------------command implementation--------------\n");
+    test_toto();
+    }
+    else
+    {
     printf("---------------------equal interger-------------------\n");
     VALID_GEN_EQUAL(foo,     foo,                 uint16_t);
     VALID_GEN_EQUAL(foo,     foo_bis,             uint16_t);
@@ -287,16 +326,44 @@ int main()
     
     printf("---------------------uint8_t-------------------\n");
     VALID_RLV_SET_PARAM(uint8_t, bar, 8);  printf(" -- expect UB\n");
+    }
 
     return 0;
 }
-
 /*
 
 warnings (only for wrong use of API):
 >> no warning                                                                                
 
-output:
+outputs:
+if TEST_ARG == 0 :
+----------------command implementation--------------
+uint16_t MyStruct1.foo = 255
+uint16_t MyStruct1.bar[] = {0xa,0xb,0xc,0xd,0xe}
+_Bool MyStruct1.blah = 1
+------
+uint16_t MyStruct1.foo = 888
+uint16_t MyStruct1.bar[] = {0x8,0x8,0x8,0x0,0x0}
+_Bool MyStruct1.blah = 0
+------
+uint16_t MyStruct1.foo = 15
+uint16_t MyStruct1.bar[] = {0x2,0x4,0x6,0x8,0x0}
+_Bool MyStruct1.blah = 1
+------
+uint16_t MyStruct1.foo = 15
+uint16_t MyStruct1.bar[] = {0x2,0x4,0x6,0x8,0x0}
+_Bool MyStruct1.blah = 1
+------
+uint16_t MyStruct1.foo = 1
+uint16_t MyStruct1.bar[] = {0x2,0x4,0x6,0x8,0x0}
+_Bool MyStruct1.blah = 0
+------
+
+
+                            
+                                                              
+        
+if TEST_ARG == 1 :                                                                                                          
 ---------------------equal interger-------------------
 Is foo(integer) equal to foo of type uint16_t? true
 Is foo_bis(integer) equal to foo of type uint16_t? true
