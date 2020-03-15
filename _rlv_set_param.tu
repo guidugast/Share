@@ -28,7 +28,7 @@
                                                                 }while(0)
                                                     
 #define VALID_RLV_SET_PARAM_AUTOTYPE(paramName)                 do{ \
-                                                                    RLV_SET_PARAM_TO_CMD_ARG(uint8_t,paramName, argListIndex_); \
+                                                                    RLV_SET_PARAM_TO_CMD_ARG(paramName, argListIndex_); \
                                                                     argListIndex_++; \
                                                                     GENERIC_PRINT(RLV_BLE_Parameters.paramName); \
                                                                 }while(0)
@@ -161,18 +161,24 @@
                                                                       }while(0)
 
                                 
-#define SET_ARG_PARAM_(type,arg,argListIndex)                        if(GET_TYPE_DIM_(type,arg) == GEN_TYPE_DIM_ARRAY_) \
-                                                                     { \
-                                                                        SET_PARAM_ARRAY_(type,argListIndex, MAX_ARR_BUF_SIZE); \
-                                                                        memcpy(&(arg),&paramArrayBuf_,sizeof(type) * paramArrayBufLength_);  \
-                                                                     } \
-                                                                     else \
-                                                                     { \
-                                                                        SET_PARAM_NOT_ARRAY_(type,argListIndex); \
-                                                                        memcpy(&(arg),&paramBuf_,sizeof(type)); \
-                                                                     } 
+#define SET_ARG_PARAM_(type,arg,argListIndex)                        do { \
+                                                                        type paramBuf_ = 0; \
+                                                                        type paramArrayBuf_[MAX_ARR_BUF_SIZE] =  {0}; \
+                                                                        uint32_t paramArrayBufLength_ = 0;  \
+                                                                        if(GET_TYPE_DIM_(type,arg) == GEN_TYPE_DIM_ARRAY_) \
+                                                                        { \
+                                                                           SET_PARAM_ARRAY_(type,argListIndex, MAX_ARR_BUF_SIZE); \
+                                                                           memcpy(&(arg),&paramArrayBuf_,sizeof(type) * paramArrayBufLength_);  \
+                                                                        } \
+                                                                        else \
+                                                                        { \
+                                                                           SET_PARAM_NOT_ARRAY_(type,argListIndex); \
+                                                                           memcpy(&(arg),&paramBuf_,sizeof(type)); \
+                                                                        } \
+                                                                     }while(0)
+                                                                     
             
-#define RLV_SET_PARAM_TO_CMD_ARG(type, paramName, argListIndex)     do { \
+#define RLV_SET_PARAM_TO_CMD_ARG(paramName, argListIndex)               do { \
                                                                            if(!strcmp(argList[argListIndex],"D"))   \
                                                                            {   \
                                                                                memcpy(&RLV_BLE_Parameters.paramName,&RLV_BLE_DefaultParameters.paramName,sizeof(RLV_BLE_DefaultParameters.paramName)); \
@@ -182,10 +188,7 @@
                                                                            }   \
                                                                            else   \
                                                                            {   \
-                                                                               type paramBuf_ = 0; \
-                                                                               type paramArrayBuf_[MAX_ARR_BUF_SIZE] =  {0}; \
-                                                                               uint32_t paramArrayBufLength_ = 0;  \
-                                                                               SET_ARG_PARAM_(type,RLV_BLE_Parameters.paramName,argListIndex); \
+                                                                               GEN_AUTOTYPE_(SET_ARG_PARAM_,RLV_BLE_Parameters.paramName,argListIndex); \
                                                                            } \
                                                                      }while(0)
                                                                         
@@ -264,3 +267,29 @@ int main()
     
     return 0;
 }
+
+/*
+----------------command implementation--------------
+uint16_t MyStruct1.foo = 255
+uint16_t MyStruct1.bar[] = {0xa,0xb,0xc,0xd,0xe}
+_Bool MyStruct1.blah = 1
+------
+uint16_t MyStruct1.foo = 888
+uint16_t MyStruct1.bar[] = {0x8,0x8,0x8,0x0,0x0}
+_Bool MyStruct1.blah = 0
+------
+uint16_t MyStruct1.foo = 15
+uint16_t MyStruct1.bar[] = {0x2,0x4,0x6,0x8,0x0}
+_Bool MyStruct1.blah = 1
+------
+uint16_t MyStruct1.foo = 15
+uint16_t MyStruct1.bar[] = {0x2,0x4,0x6,0x8,0x0}
+_Bool MyStruct1.blah = 1
+------
+uint16_t MyStruct1.foo = 1
+uint16_t MyStruct1.bar[] = {0x2,0x4,0x6,0x8,0x0}
+_Bool MyStruct1.blah = 0
+------
+
+
+*/
