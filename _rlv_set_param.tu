@@ -32,24 +32,30 @@
                                                                     argListIndex_++; \
                                                                     GENERIC_PRINT(RLV_BLE_Parameters.paramName); \
                                                                 }while(0)
-                                                                //GEN_AUTOTYPE_
-                                                                               
+                                                                //TODO : add engineCommandId to check if argListIndex_ > argNumber 
+                                                                
 //////////////////////////////////////////////////////////////
 ///////////////            GEN API            ////////////////
 //////////////////////////////////////////////////////////////
 
 #define MAX_ARR_BUF_SIZE 256  
 
-#define GEN_TYPE_DIM_DEFAULT_ 0
-#define GEN_TYPE_DIM_POINTER_ 1
-#define GEN_TYPE_DIM_INTEGER_ 2
-#define GEN_TYPE_DIM_ARRAY_   4
+typedef enum
+{
+    GEN_TYPE_DIM_DEFAULT_  = 0x00,
+    GEN_TYPE_DIM_POINTER_  = 0x01,
+    GEN_TYPE_DIM_INTEGER_  = 0x02,
+    GEN_TYPE_DIM_ARRAY_    = 0x04,
+} gen_type_dim_t;
 
-#define GEN_TYPE_DEFAULT_ 0
-#define GEN_TYPE_U32_ 1 
-#define GEN_TYPE_U16_ 2
-#define GEN_TYPE_U8_ 4
-#define GEN_TYPE_BOOL_ 8
+typedef enum
+{
+    GEN_TYPE_DEFAULT_      = 0x00,
+    GEN_TYPE_U32_          = 0x01,
+    GEN_TYPE_U16_          = 0x02,
+    GEN_TYPE_U8_           = 0x04,
+    GEN_TYPE_BOOL_         = 0x08,
+} gen_type_t;
 
 #define GET_TYPE_DIM_(type,arg)                     _Generic((&arg)+0, \
                                                         default: GEN_TYPE_DIM_DEFAULT_, \
@@ -58,7 +64,6 @@
                                                         type (*)[]: GEN_TYPE_DIM_ARRAY_ \
                                                     )
                                                            
-#define GEN_AUTOTYPE_PN(function,paramName,...)     //GEN_AUTOTYPE_(function,RLV_BLE_Parameters.paramName,__VA_ARGS__) 
 #define GEN_AUTOTYPE_(function,arg,...)            do{switch(_Generic((&arg), \
                                                         _Bool * : GEN_TYPE_BOOL_, \
                                                         uint8_t* : GEN_TYPE_U8_, \
