@@ -6,14 +6,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-/#include <stdio.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdlib.h>
-
 #define MAX_SIZE 256
 #define MAX_DISPLAYABLE_SIZE 30
 
@@ -23,14 +15,10 @@ typedef enum
     ENUM1_B,
 }someEnum1_e;
 
-typedef union
-{
-    someEnum1_e value;
-}someEnum1_e_t;
 #define def_x_st(type) typedef union \
 { \
-    someEnum1_e value;\
-}type##_st;
+    type value;\
+}type##_t;
 def_x_st(someEnum1_e);
 
 #define def_array_x_t(type) typedef struct \
