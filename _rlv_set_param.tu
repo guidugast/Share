@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////                Generic Macros              //////////////////
 ////////////////////////////////////////////////////////////////////////////////
-#define  DO_(function, type, data,arg) function##type((type)*((type*)&data),arg)
+#define  DO_(function, type, data,arg) function##type((type*)&data,arg)
 #define  DO_AUTO_(function,data,arg)   _Generic((&data)+0,  \
                                     _Bool* : DO_(function, _Bool, data,arg), \
                                     uint8_t* : DO_(function, uint8_t, data,arg), \
@@ -99,24 +99,24 @@ DEF_array_x_t(uint8_t);
 //////////////////                Print generation            //////////////////
 ////////////////////////////////////////////////////////////////////////////////
 #define DEF_print_x_t(int_type) \
-static inline void print_##int_type(int_type val, char * dummy) \
+static inline void print_##int_type(int_type* val, char * dummy) \
 { \
     (void)dummy; \
-    RLV_LOG_LINE(#int_type" val = %u (0x%08x)",(int_type)val,(int_type)val); \
+    RLV_LOG_LINE(#int_type" val = %u (0x%08x)",(int_type)*val,(int_type)*val); \
 } 
 DEF_print_x_t(uint32_t);
 DEF_print_x_t(uint16_t);
 DEF_print_x_t(uint8_t);
 
 #define DEF_print_array_x_t(type) \
-static inline void print_array_##type(array_##type val, char * dummy) \
+static inline void print_array_##type(array_##type* val, char * dummy) \
 { \
     (void)dummy; \
-    RLV_LOG_LINE(#type" val[%u] = {",val.length); \
-    for(uint16_t i = 0; (i < RLV_MAX_DISPLAYABLE_ARR_SIZE)&&(i < val.length); i++) \
+    RLV_LOG_LINE(#type" val[%u] = {",val->length); \
+    for(uint16_t i = 0; (i < RLV_MAX_DISPLAYABLE_ARR_SIZE)&&(i < val->length); i++) \
     { \
-        RLV_APPEND_LOG("0x%x",val.content[i]); \
-        if((i +1 < RLV_MAX_DISPLAYABLE_ARR_SIZE) && (i + 1 < val.length)) {RLV_APPEND_LOG(",");} \
+        RLV_APPEND_LOG("0x%x",val->content[i]); \
+        if((i +1 < RLV_MAX_DISPLAYABLE_ARR_SIZE) && (i + 1 < val->length)) {RLV_APPEND_LOG(",");} \
     } \
     RLV_APPEND_LOG("}"); \
 } 
@@ -124,11 +124,11 @@ DEF_print_array_x_t(uint32_t);
 DEF_print_array_x_t(uint16_t);
 DEF_print_array_x_t(uint8_t);
 
-static inline void print_FunctionalState_t(FunctionalState_t val, char * dummy)
+static inline void print_FunctionalState_t(FunctionalState_t* val, char * dummy)
 {
     (void)dummy; \
     RLV_LOG_LINE("FunctionalState val = ");
-    switch(val.value)
+    switch(val->value)
     {
         case ENABLE: RLV_APPEND_LOG("ENABLE"); break;
         case DISABLE: RLV_APPEND_LOG("DISABLE"); break;
@@ -136,20 +136,20 @@ static inline void print_FunctionalState_t(FunctionalState_t val, char * dummy)
     }
 }
 
-static inline void print__Bool(_Bool val, char * dummy)
+static inline void print__Bool(_Bool* val, char * dummy)
 {
     (void)dummy;
-    RLV_LOG_LINE("bool val = %s",(val?"TRUE":"FALSE"));
+    RLV_LOG_LINE("bool val = %s",(*val?"TRUE":"FALSE"));
 }
 
 #define DEF_print_enum(enum_val) \
 case enum_val: RLV_APPEND_LOG(#enum_val); break;
 #define DEF_print_x_e(enum_type) \
-static inline void print_##enum_type##_t(enum_type##_t val, char * dummy) \
+static inline void print_##enum_type##_t(enum_type##_t* val, char * dummy) \
 { \
     (void)dummy; \
     RLV_LOG_LINE(#enum_type" val = "); \
-    switch(val.value) \
+    switch(val->value) \
     { \
          LIST_##enum_type(DEF_print_enum) \
          default: RLV_LOG_ERROR("unkown value for "#enum_type"_t"); break; \
@@ -177,14 +177,14 @@ do{ \
        strcmp(gen_current_cli_arg_,"FALSE") || \
        strcmp(gen_current_cli_arg_,"false"))  \
     { \
-        param = ((gen_current_cli_arg_[strspn(gen_current_cli_arg_, "Tt")] != '\0') ? 1 : 0);   \
+        *param = ((gen_current_cli_arg_[strspn(gen_current_cli_arg_, "Tt")] != '\0') ? 1 : 0);   \
     } \
     else if((gen_current_cli_arg_[0]=='x') || \
             (gen_current_cli_arg_[1]=='x') || \
             (gen_current_cli_arg_[0]=='X') || \
             (gen_current_cli_arg_[1]=='X'))   \
     {     \
-        param = strtol(gen_current_cli_arg_,NULL,16);   \
+        *param = strtol(gen_current_cli_arg_,NULL,16);   \
     }   \
     else   \
     {   \
@@ -194,12 +194,12 @@ do{ \
         } \
         else \
         { \
-            param = strtol(gen_current_cli_arg_,NULL,10); \
+            *param = strtol(gen_current_cli_arg_,NULL,10); \
         } \
     } \
 }while(0)
 #define DEF_set_from_arg_int_x_(integer_type) \
-static inline void set_from_arg_##integer_type(integer_type param, char* gen_current_cli_arg_) \
+static inline void set_from_arg_##integer_type(integer_type* param, char* gen_current_cli_arg_) \
 { \
     set_from_arg_int_x_(param,gen_current_cli_arg_); \
 } 
@@ -208,67 +208,70 @@ DEF_set_from_arg_int_x_(uint8_t);
 DEF_set_from_arg_int_x_(uint16_t);
 DEF_set_from_arg_int_x_(uint32_t);
 
-#define set_from_arg_arr_x_(param,gen_current_cli_arg_)  \
+uint16_t strpos(char *haystack, char *needle)
+{
+   char *p = strstr(haystack, needle);
+   if (p) return p - haystack;
+   return (uint16_t)-1;
+}
+
+#define set_from_arg_arr_x_(param,gen_current_cli_arg_,type)  \
 do{ \
     if((gen_current_cli_arg_[0]=='[') && \
     (gen_current_cli_arg_[strlen(gen_current_cli_arg_)-1] == '}') && \
     (gen_current_cli_arg_[strcspn(gen_current_cli_arg_, "[]{}")] != '\0'))  \
     {  \
-        char * gen_array_arg  = strtok(gen_current_cli_arg_, "]"); \
-        param.length = (uint16_t)strtol(gen_array_arg, NULL, 10); \
-        printf("gen_array_arg '%s'",gen_array_arg); \
+        char clen[20]; \
+        uint16_t ulen=0; \
+        char * gen_array_arg; \
+        char current_arg[200] ; \
+        char * current_arg_ptr = current_arg; \
+        strcpy(current_arg_ptr,gen_current_cli_arg_); \
+        gen_array_arg = strtok(strpbrk (current_arg_ptr, "{")+1, ","); \
+        while(gen_array_arg != NULL) \
+        {  \
+            if((gen_array_arg[0]=='0') && (gen_array_arg[1]=='x')) \
+            { \
+                param->content[ulen++] = (type)strtol (gen_array_arg, NULL, 16); \
+            } \
+            else \
+            { \
+                RLV_LOG_ERROR("wrong format for array element (%u), use hexa, for instance '[]{0xA,0x10,0x0,0xA1FC}'\n",ulen-1); \
+            } \
+            gen_array_arg = strtok(NULL, ","); \
+        } \
+        uint16_t ulen_pos = (strpos(current_arg_ptr, "]")-1); \
+        uint16_t ulen_auto = !ulen_pos; \
+        strxfrm(clen, current_arg_ptr+1, (uint16_t)current_arg_ptr+1+ulen_pos); \
+        param->length = ulen_auto?ulen: strtol (clen, NULL, 10); \
     } \
     else \
     { \
-        RLV_LOG_ERROR("wrong format for array, use for instance '[4]{A,10,0,A1FC}', '[0]{}', or '[3]{FF}'\n"); \
+        RLV_LOG_ERROR("wrong format for array, use for instance '[8]{0xA,0x10,0x0,0xA1FC}', '[0]{}', or '[]{0xFF}'\n"); \
     } \
 }while(0)    
-/*      uint32_t array_length_index = (uint32_t)(strcspn(gen_current_cli_arg_,"]") != -1)?strcspn(gen_current_cli_arg_,"]") + 3:-1;
-uint32_t array_index = (uint32_t)(strcspn(gen_current_cli_arg_,"]") != -1)?strcspn(gen_current_cli_arg_,"]") + 3:-1;
-        printf("%u -- ",(uint32_t)strcspn(gen_current_cli_arg_,"]")); //index de "]"
-
-
-        char * gen_array_arg strtok(gen_current_cli_arg_, "]"); \
-        param.length = (uint16_t)strtol(gen_array_arg, NULL, 10); \
-        printf("gen_array_arg '%s'",gen_array_arg); \
-        gen_array_arg = strtok(NULL, "}"); \
-
-        printf("param.length '%u'",param.length); \
-        gen_array_arg = strtok(NULL, "]"); \
-        if(gen_array_arg != NULL) \
-        { \
-            printf("gen_array_arg '%s'",gen_array_arg); \
-            char * gen_data_arg;  \
-            gen_data_arg = strtok(gen_array_arg, ","); \
-            printf("gen_data_arg '%s'",gen_data_arg); \
-            for(uint16_t i = 0; (gen_data_arg != NULL) && (i<RLV_GEN_MAX_ARR_BUF_SIZE);i++) \
-            { \
-                param.content[i] = (uint32_t)strtol(gen_data_arg, NULL, 16); \
-                gen_data_arg = strtok(NULL, ","); \
-            } \
-        } \
-        */
+    
 #define DEF_set_from_arg_arr_x_(type) \
-static inline void set_from_arg_array_##type(array_##type param, char* gen_current_cli_arg_) \
+static inline void set_from_arg_array_##type(array_##type* param, char* gen_current_cli_arg_) \
 { \
-    set_from_arg_arr_x_(param,gen_current_cli_arg_); \
+    set_from_arg_arr_x_(param,gen_current_cli_arg_,type); \
 } 
 DEF_set_from_arg_arr_x_(uint8_t);
 DEF_set_from_arg_arr_x_(uint16_t);
 DEF_set_from_arg_arr_x_(uint32_t);
 
-static inline void set_from_arg_FunctionalState_t(FunctionalState_t param, char * gen_current_cli_arg_)
+static inline void set_from_arg_FunctionalState_t(FunctionalState_t* param, char * gen_current_cli_arg_)
 {
     if(false){}
-    else if(!strcmp(gen_current_cli_arg_,"ENABLE")) param.value = ENABLE;
-    else if (!strcmp(gen_current_cli_arg_,"ENABLE")) param.value = ENABLE;
+    else if(!strcmp(gen_current_cli_arg_,"ENABLE")) param->value = ENABLE;
+    else if (!strcmp(gen_current_cli_arg_,"ENABLE")) param->value = ENABLE;
     else RLV_LOG_ERROR("unkown value for FunctionalState");
 }
 
 #define DEF_set_param(enum_val) \
-else if(!strcmp(gen_current_cli_arg_,#enum_val)) param.value = enum_val;
+else if(!strcmp(gen_current_cli_arg_,#enum_val)) param->value = enum_val;
 #define DEF_set_from_arg_e_x_(enum_type) \
-static inline void set_from_arg_##enum_type##_t(enum_type##_t param, char* gen_current_cli_arg_) \
+static inline void set_from_arg_##enum_type##_t(enum_type##_t* param, char* gen_current_cli_arg_) \
 { \
     if(false){} \
     LIST_##enum_type(DEF_set_param) \
@@ -462,11 +465,11 @@ RLV_Parameters_t*                RLV_BLE_TOOLS_DefaultParameters_ptr = (RLV_Para
 
 
 
-    char * argList[] = {"0xFF" , "[5]{A,B,C,D,E}" , "T", //valid --> new values
+    char * argList[] = {"0xFF" , "[5]{0xA,0xB,0xC,0xD,0xE}" , "T", //valid --> new values
                         "D"    , "D"           , "D", //default --> back to default values 
-                        "15"   , "[3]{1,2,3}"   , "T", //valid --> new values 
+                        "15"   , "[5]{0x1,0x2,0x3}"   , "T", //valid --> new values 
                         "P"    , "P"           , "P", //preset --> keep last values
-                        "TEST" , "ABCDE"       , "Z", //wrong values --> keep last values
+                        "TEST" , "[]{0x2,0x4,0x6}"       , "Z", //wrong values --> keep last values
                        };
 
 
