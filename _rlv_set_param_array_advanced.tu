@@ -48,10 +48,37 @@ DEF_array_x_t(uint32_t);
 DEF_array_x_t(uint16_t);
 DEF_array_x_t(uint8_t);
 
+
 static inline uint16_t strpos(char *haystack, char *needle)
 {
    char *p = strstr(haystack, needle);
    return (p ? p - haystack : (uint16_t)-1);
+}
+
+static inline bool IsComposedOfAtLeastOneOfCharInList(char *str, char* list)
+{
+    return (str[strcspn(str,list)] != '\0');
+}
+
+static inline bool DoesContainOnlySomeOrAllCharInList(char *str, char* list)
+{
+    return (str[strspn(str,list)] == '\0');
+}
+
+static inline bool DoesContainAllCharInList(char *str, char* list)
+{
+    bool retVal = true;
+    for(uint8_t index = 0; index < strlen(list); index++)
+    {
+        retVal = retVal && strchr(str,list[index]);
+        if (!retVal) break;
+    }
+    return retVal;
+}
+
+bool DoesContainString(char *str, char* strInStr)
+{
+    return (strstr(str,strInStr) != NULL);
 }
 
 #define add_from_arg_arr_x_(param,gen_current_cli_arg_,type)  \
@@ -59,11 +86,14 @@ do{ \
     bool isInError = true; \
     bool isFilled = false; \
     type bufArray[RLV_MAX_ARR_BUF_SIZE] = {0}; \
-    printf("arg:%s -- ",gen_current_cli_arg_); \
-    if((gen_current_cli_arg_[0]=='[') && \
-    (gen_current_cli_arg_[strlen(gen_current_cli_arg_)-1] == '}') && \
-    (gen_current_cli_arg_[strcspn(gen_current_cli_arg_, "[]{}")] != '\0'))  \
+    printf("s:'%s'",gen_current_cli_arg_); \
+    if(DoesContainOnlySomeOrAllCharInList(gen_current_cli_arg_, "[]{}x0123456789abcdefABCDEF*,") && \
+    DoesContainAllCharInList(gen_current_cli_arg_, "[]{}") && \
+    DoesContainString(gen_current_cli_arg_, "]{") && \
+    (gen_current_cli_arg_[0]=='[') && \
+    (gen_current_cli_arg_[strlen(gen_current_cli_arg_)-1] == '}'))  \
     {  \
+        printf("test"); \
         char clen[RLV_MAX_INPUTABLE_ARRAY_LENGHT_CHAR_SIZE]; \
         uint16_t ulen=0; \
         char * gen_array_arg; \
@@ -78,28 +108,36 @@ do{ \
         {  \
             if((gen_array_arg[0]=='0') && (gen_array_arg[1]=='x')) \
             { \
-                if(strspn(gen_array_arg, "x0123456789abcdefABCDEF}") >= strlen(gen_array_arg)) \
+                if(DoesContainOnlySomeOrAllCharInList(gen_array_arg, "x0123456789abcdefABCDEF}*")) \
                 { \
-                    bufArray[ulen++] = (type)strtol (gen_array_arg, NULL, 16); \
-                    isInError = false; \
-                } \
-                else if(strspn(gen_array_arg, "x0123456789abcdefABCDEF}*") >= strlen(gen_array_arg) && \
+                    if(DoesContainAllCharInList(gen_array_arg, "0x}*") && \
                         (ulen == 0) && \
                         (isAutoFilled == false)) \
-                { \
-                    memset(bufArray, (type)strtol (gen_array_arg, NULL, 16), strtol (clen, NULL, 10)); \
-                    isInError = false; \
-                } \
-                else if(strspn(gen_array_arg, "x0123456789abcdefABCDEF") >= strlen(gen_array_arg)) \
-                { \
-                    bufArray[ulen++] = (type)strtol (gen_array_arg, NULL, 16); \
+                    { \
+                        memset(bufArray, (type)strtol (gen_array_arg, NULL, 16), strtol (clen, NULL, 10)); \
+                        isInError = false; \
+                    } \
+                    else if(DoesContainAllCharInList(gen_array_arg, "*") == false) \
+                    { \
+                        bufArray[ulen++] = (type)strtol (gen_array_arg, NULL, 16); \
+                        isInError = !DoesContainAllCharInList(gen_array_arg, "x0}"); \
+                    } \
+                    else \
+                    { \
+                        isInError = true; \
+                    } \
                 } \
                 else \
                 { \
+                    isInError = true; \
                 } \
             } \
+            else \
+            { \
+                isInError = true; \
+            } \
             gen_array_arg = strtok(NULL, ","); \
-        }while(gen_array_arg != NULL && !isInError); \
+        }while(gen_array_arg != NULL); \
         if (false == isInError) \
         { \
             param->length = isAutoFilled ? ulen : strtol (clen, NULL, 10); \
@@ -157,15 +195,15 @@ DEF_TEST_array_x_t(uint8_t)
 int main()
 {
     array_uint8_t myParam = {0};
-    TEST_uint8_t(&myParam,"[0x1,]{0x2,0x3}");            //E : wrong format                   O: KO --- [0] = {}
-    TEST_uint8_t(&myParam,"[]0x1,{0x2,0x3}");            //E : wrong format                   O: KO --- [2] = {0x02,0x03} 
-//  TEST_uint8_t(&myParam,"[]0x1,0x2,0x3}");             //E : wrong format                   O: NOK ----- SEG FAULT
-    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3");             //E : wrong format                   O: OK
-    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3}");            //E : [3]{0x01,0x02,0x03}            O: OK
-    TEST_uint8_t(&myParam,"[2]{0x1,0x2,0x3,0x4}");       //E : [2]{0x01,0x02}                 O: OK
-    TEST_uint8_t(&myParam,"[4]{0x1,0x2}");               //E : [4]{0x01,0x02,0x00,0x00}       O: OK
-    TEST_uint8_t(&myParam,"[]{0xFF,0xFF,0xFF,0xFF}");    //E : [2]{0xFF,0xFF,0xFF,0xFF}       O: OK
-    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3,Z}");          //E : wrong format + OxFF*4          O: KO --- [3] = {0x01,0x02,0x03}
+    TEST_uint8_t(&myParam,"[]0x1,0x2,0x3}");             //E : wrong format                   O: OK V
+    TEST_uint8_t(&myParam,"[0x1,]{0x2,0x3}");            //E : wrong format                   O: KO 
+    TEST_uint8_t(&myParam,"[]0x1,{0x2,0x3}");            //E : wrong format                   O: OK V 
+    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3");             //E : wrong format                   O: OK V
+    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3}");            //E : [3]{0x01,0x02,0x03}            O: OK V
+    TEST_uint8_t(&myParam,"[2]{0x1,0x2,0x3,0x4}");       //E : [2]{0x01,0x02}                 O: OK V
+    TEST_uint8_t(&myParam,"[4]{0x1,0x2}");               //E : [4]{0x01,0x02,0x00,0x00}       O: OK V
+    TEST_uint8_t(&myParam,"[]{0xFF,0xFF,0xFF,0xFF}");    //E : [2]{0xFF,0xFF,0xFF,0xFF}       O: OK V
+    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3,Z}");          //E : wrong format + OxFF*4          O: OK V
     TEST_uint8_t(&myParam,"[4]{0x1,0x2}");               //E : [4]{0x01,0x02,0x00,0x00}       O: OK
     TEST_uint8_t(&myParam,"[]{0x1}");                    //E : [1]{0x01}                      O: OK
     TEST_uint8_t(&myParam,"[]{0x1*}");                   //E : wrong format                   O: OK
@@ -178,28 +216,3 @@ int main()
 
     return 0;
 }
-
-
-/*
-
-arg:[0x1,]{0x2,0x3} -- [0] = {}
-arg:[]0x1,{0x2,0x3} -- [2] = {0x02,0x03}
-arg:[]{0x1,0x2,0x3 -- wrong format for array, use for instance '[8]{0xA,0x0,0xA1FC}', '[0]{}', or '[]{0xFF}'
-[2] = {0x02,0x03}
-arg:[]{0x1,0x2,0x3} -- [3] = {0x01,0x02,0x03}
-arg:[2]{0x1,0x2,0x3,0x4} -- [2] = {0x01,0x02}
-arg:[4]{0x1,0x2} -- [4] = {0x01,0x02,0x00,0x00}
-arg:[]{0xFF,0xFF,0xFF,0xFF} -- [4] = {0xff,0xff,0xff,0xff}
-arg:[]{0x1,0x2,0x3,Z} -- [3] = {0x01,0x02,0x03}
-arg:[4]{0x1,0x2} -- [4] = {0x01,0x02,0x00,0x00}
-arg:[]{0x1} -- [1] = {0x01}
-arg:[]{0x1*} -- wrong format for array element (4294967295), use hexa, for instance '[]{0xA,0x10,0x0,0xA1FC}'
-or wrong format for auto filled array, use this '[3]{0xAA*}' to get '[3]{0xAA,0xAA,0xAA}'
-[1] = {0x01}
-arg:[3]{*0x1} -- wrong format for array element (4294967295), use hexa, for instance '[]{0xA,0x10,0x0,0xA1FC}'
-or wrong format for auto filled array, use this '[3]{0xAA*}' to get '[3]{0xAA,0xAA,0xAA}'
-[1] = {0x01}
-arg:[3]{0x1*} -- [3] = {0x01,0x01,0x01}
-
-
-*/
