@@ -1,0 +1,15 @@
+#!/bin/bash
+
+## paths
+COMMON_SCRIPTS_PATH=$(realpath  ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts)
+COMMON_CONFIG_PATH=$(realpath  ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/00_Config)
+C_SOURCES_PATH=$(realpath  ${WORKSPACE_ROOT_PATH}/01_C_Sources/)
+
+
+## files
+COMMON_CFG=$(realpath  ${COMMON_CONFIG_PATH}/Common.cfg)
+COMMON_LIB=$(realpath  ${COMMON_SCRIPTS_PATH}/Common.lib)
+
+
+
+

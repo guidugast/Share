@@ -1,0 +1,530 @@
+def PrintToolVersion()
+{
+    echo ''' 
+    Project name :                      ''' + env.JOB_NAME + '''
+    Running pipeline script version :   '''+ PIPELINE_SCRIPT_VERSION + '''
+    ----------------------------------------------------------------------
+    machine used :                 ARCH@x64 CORE@i5-8365U CLK@1.6GHz RAM@16GB
+    OS used :                      Windows 10 Enterprise
+    Git version used :             2.12.0 
+    TortoiseGit version used :     2.0.0.0
+    IAR version used :             xx.xx
+    STL utility version used :     xx.xx
+    Python version used :          3.8.1
+      - Python module "XXXX" version used :                                     xx.xx
+    Jenkins version used :         2.2.0.0
+      - Jenkins plugin "Build Timestamp Plugin" version used :                  1.0.3
+      - Jenkins plugin "Command Agent Launcher" version used :                  1.3
+      - Jenkins plugin "cross-platform shell plugin" version used :             0.1
+      - Jenkins plugin "Matrix Authorization Strategy Plugin" version used :    2.5
+      - Jenkins plugin "OWASP Markup Formatter Plugin" version used :           1.6
+      - Jenkins plugin "Pipeline" version used :                                2.6
+      - Jenkins plugin "SSH Agent Plugin" version used :                        1.17
+      - Jenkins plugin "Timestamper" version used :                             1.10
+      - Jenkins plugin "WMI Windows Agents" version used :                      1.5
+    '''
+}
+
+
+/////////////////////
+/// Helper funct. ///
+/////////////////////
+
+def TimeLog(x)
+{
+    timestamps 
+    {
+        echo "#### " + x
+    }
+}
+
+def SilentSh(cmd)
+{
+    sh('#!/bin/bash -e\n'+cmd)
+}
+
+def RunPythonScript(python_version, script, args, log)
+{
+    sshagent(credentials: [SSH_KEY] ) 
+    {
+        echo "Work in progress..."
+        SilentSh( 
+        python_version +  " -u  " + script + " " + args +" 2>&1 | tee -a " + log + '''
+        ret=${PIPESTATUS[0]}
+        if [[ $ret -eq 0 ]]; then 
+            exit 0
+        elif [[ $ret -eq 2 ]]; then 
+            # then kill process python
+            echo "No port com Found"
+            echo "Maybe python was not ended with a clean exit."
+            echo "Killing python process"
+            taskkill -IM python.exe -F
+            sleep 5
+            echo "Trying again..."
+        else
+            echo "Unexpected validation error: $ret"
+            exit $ret
+        fi''')
+    }
+}
+
+def RunPythonCommand(python_version,command)
+{
+    sshagent(credentials: [SSH_KEY] ) 
+    {
+        return bat(
+        returnStdout: true,
+        script: '''@echo ${command}> tmp_python_File && ${python_version} tmp_python_File && rm tmp_python_File'''
+        ) 
+    }
+}
+
+def RunBatchScript(script)
+{    
+    sshagent(credentials: [SSH_KEY] ) 
+    {
+        bat script
+    }
+}
+
+def RunShellScript(script, args, log)
+{
+    sshagent(credentials: [SSH_KEY] ) 
+    {
+        SilentSh(
+        script + ''' ''' + args + ''' 2>&1 | tee -a ''' + log + '''
+        ret=${PIPESTATUS[0]}
+        if [[ ! $ret -eq 0 ]]; then
+            echo " --> Error ($ret) in script $(basename ''' + script + ''')"
+            exit $ret
+        fi'''
+        )
+    }
+}
+
+def StageTitle(x)
+{
+    echo "////////////////////////////////////////////////////\n////////>>        " + x + "\n////////////////////////////////////////////////////"
+}
+
+def StepTitle(x)
+{
+    echo "----------------------------------------------------\n        -->>" + x
+}
+
+/////////////////////
+/// Configuration ///
+/////////////////////
+def CheckPipelineScript()
+{
+    SilentSh(
+    '''
+    echo "Pipeline script last update : $(date -r ${PIPELINE_SCRIPT})"
+    echo "Pipeline script version : ${PIPELINE_SCRIPT_VERSION}"
+    version_number=$(cat ''' +PIPELINE_SCRIPT + ''' | egrep 'PIPELINE_SCRIPT_VERSION=.v' | grep -oh v[0-9].[0-9][0-9])
+    if [ "$version_number" = "${PIPELINE_SCRIPT_VERSION}" ]; then
+        echo "Info : Pipeline script up to date "
+    else
+        echo "/////////////////////////////////////////////////////////////////////////"
+        echo "/////////////////////////////////////////////////////////////////////////"
+        echo "////////////                                              ///////////////"
+        echo "///////////   Warning : Pipeline script is not up to date  //////////////"
+        echo "////////                  $version_number != ${PIPELINE_SCRIPT_VERSION}                       //////////"
+        echo "////////////                                              ///////////////"
+        echo "/////////////////////////////////////////////////////////////////////////"
+        echo "/////////////////////////////////////////////////////////////////////////"
+        #TODO: exit 1
+    fi
+    ''')
+}
+
+def GetConfigParameter(configuration_file, param_name)
+{//TODO: parse comment at the end of line with # or //
+    return sh(returnStdout: true,script:'#!/bin/sh -e\n' +
+        '''
+        if [ -z "'''+param_name+'''" ]; then 
+            printf "Error in calling jenkins function GetConfigParameter() with param '''+param_name+'''\n"
+            exit 1
+        fi
+        echo $(grep "'''+param_name+'''=" '''+configuration_file+''' | grep -oP "(?<='''+param_name+'''=).*")
+        ''')
+}
+    
+def InitConfigurationVariable()
+{
+    def PROJECT_WORKSPACE = 'NOT_DEFINED_YET'
+    def MANIFEST_CFG = 'NOT_DEFINED_YET'
+    def M0_IAR_PROJECT = 'NOT_DEFINED_YET'
+    def M4_IAR_PROJECT = 'NOT_DEFINED_YET'
+    def M0_BINARY_FILE = 'NOT_DEFINED_YET'
+    def M4_BINARY_FILE = 'NOT_DEFINED_YET'
+    def VALIDATION_TESTSUITE = 'NOT_DEFINED_YET'
+    def PROJECT_UPDATE_SCRIPT_OPTION = 'NOT_DEFINED_YET'
+    def BUILDING_SCRIPT_OPTION = 'NOT_DEFINED_YET'
+    def FLASHING_SCRIPT_OPTION = 'NOT_DEFINED_YET'
+    def VALIDATION_SCRIPT_OPTION = 'NOT_DEFINED_YET'
+    
+}
+
+def ConfigureBuild()
+{
+    PYTHON38 = "${GetConfigParameter(GLOBAL_CFG,"PYTHON38")}".trim()
+    ST_LINK_UTILITY = "${GetConfigParameter(GLOBAL_CFG,"ST_LINK_UTILITY")}".trim()
+    M0_IAR_PROJECT = "${GetConfigParameter(PROJECT_CFG,"M0_IAR_PROJECT")}".trim()
+    M4_IAR_PROJECT = "${GetConfigParameter(PROJECT_CFG,"M4_IAR_PROJECT")}".trim()
+    M0_BINARY_FILE = "${GetConfigParameter(PROJECT_CFG,"M0_BINARY_FILE")}".trim()
+    M4_BINARY_FILE = "${GetConfigParameter(PROJECT_CFG,"M4_BINARY_FILE")}".trim()
+}
+
+def PrintBuildConfig()
+{
+    SilentSh(
+    '''
+    echo "PYTHON38="''' +  PYTHON38 +    '''    
+    echo "ST_LINK_UTILITY="''' +  ST_LINK_UTILITY +    '''   
+    echo "M0_IAR_PROJECT="''' +  M0_IAR_PROJECT +    '''    
+    echo "M4_IAR_PROJECT="''' +  M4_IAR_PROJECT +    '''     
+    echo "M0_BINARY_FILE="''' +  M0_BINARY_FILE +    '''        
+    echo "M4_BINARY_FILE="''' +  M4_BINARY_FILE )
+}
+
+def ExpandConfigurationDependantVariables()
+{
+    PROJECT_UPDATE_SCRIPT_OPTION = " -u ${SSH_USERNAME} -o ${PROJECT_WORKSPACE} -v ${MANIFEST_CFG} -s".trim()
+    BUILDING_SCRIPT_OPTION = " -m0 ${M0_IAR_PROJECT} -m4 ${M4_IAR_PROJECT} -p ${PROJECT_WORKSPACE} -l ${LOG_PATH}".trim()
+    FLASHING_SCRIPT_OPTION = " -m0 ${M0_BINARY_FILE} -m4 ${M4_BINARY_FILE} -p ${PROJECT_WORKSPACE} -l ${LOG_PATH}".trim() 
+    VALIDATION_SCRIPT_OPTION = " -s ${VALIDATION_TESTSUITE} -c -r ${LOG_PATH}".trim()
+}
+
+def PrintConfigurationDependantVariables()
+{
+    SilentSh(
+    '''
+    echo "PROJECT_UPDATE_SCRIPT_OPTION="''' +  PROJECT_UPDATE_SCRIPT_OPTION +    '''    
+    echo "BUILDING_SCRIPT_OPTION="''' +  BUILDING_SCRIPT_OPTION +    '''    
+    echo "FLASHING_SCRIPT_OPTION="''' +  FLASHING_SCRIPT_OPTION +    '''    
+    echo "VALIDATION_SCRIPT_OPTION="''' +  VALIDATION_SCRIPT_OPTION )
+}
+
+def PIPELINE_DELAY_TRICK_IN_S=1 //this delay is used to trigger the timeout which will not be triggered without (jenkins bug)
+def PIPELINE_TIMEOUT_IN_S=1500  //25 minutes in second
+
+/////////////////////
+///    Pipeline   ///
+/////////////////////
+pipeline 
+{    
+    agent any
+    
+    triggers 
+    { 
+        cron('H */1 * * *')
+    }
+     
+    environment
+    {
+        ///Project
+        PROJECT_NAME="${env.JOB_NAME}" //Project name shall be the same for the git folder and for the jenkins job
+        BUILD_ID="JenkinsBuild${env.BUILD_NUMBER}"
+        
+        ///Configuration 
+        PROJECT_CONFIG_PATH="${SCRIPT_AND_TOOLS}/01_Projects/${PROJECT_NAME}/00_config"
+        GLOBAL_CFG="${SCRIPT_AND_TOOLS}/00_Common/00_config/Global.cfg"
+        PROJECT_CFG="${PROJECT_CONFIG_PATH}/Project.cfg"
+        MANIFEST_CFG = "${PROJECT_CONFIG_PATH}/GitManifest.cfg"
+        VALIDATION_TESTSUITE="${PROJECT_CONFIG_PATH}/TestSuite.cfg" 
+        
+        ///This pipeline script
+        PIPELINE_SCRIPT_VERSION="v0.99c"
+        PIPELINE_SCRIPT="${SCRIPT_AND_TOOLS}/00_Common/01_tools/JenkinsPipeline.jk"
+        FIRST_TIMESTAMP=sh(returnStdout: true,script:'''#!/bin/sh -e\necho "$(date +"%Y%m%d")"''').trim() // TO_BE_REMOVED : once a day, change the directory, for testing robustness purposes
+
+        
+        ///SSH credentials
+        SSH_KEY='dugast-ssh'
+        SSH_USERNAME='dugastg'
+        
+        ///Workspace
+        JK_WORKSPACE = "C:/_Jenkins_${env.FIRST_TIMESTAMP}" //TO_BE_REMOVED : the timestamp shall be remove, used for testing robustness purposes
+        PROJECT_WORKSPACE="${JK_WORKSPACE}/01_Projects/${PROJECT_NAME}"
+        SCRIPT_AND_TOOLS_FOLDER = '00_scripts_and_tools'
+        SCRIPT_AND_TOOLS = "${JK_WORKSPACE}/${SCRIPT_AND_TOOLS_FOLDER}"
+        LOG_PATH = "${SCRIPT_AND_TOOLS}/01_Projects/${PROJECT_NAME}/02_log/${BUILD_ID}"
+
+        ///Git (clone/update)
+        SCRIPT_AND_TOOL_GIT_URL = "ssh://${SSH_USERNAME}@gerrit.st.com:29418/stm32cube/fw/projects_wb.git"
+        SCRIPT_AND_TOOL_GIT_BRANCH = "iso/LLD_validation"
+        SCRIPT_AND_TOOL_GIT_PATH = "/__INTERNAL__Validation_Projects/LLD_validation/*"
+        PROJECT_UPDATE_PATH = "${SCRIPT_AND_TOOLS}/00_Common/02_project_update"
+        PROJECT_UPDATE_SCRIPT = "${PROJECT_UPDATE_PATH}/project_update.sh"
+        PROJECT_UPDATE_LOG = "${LOG_PATH}/project_update.log"
+ 
+        
+        ///Building
+        BUILDING_SCRIPT_PATH = "${SCRIPT_AND_TOOLS}/00_Common/03_building"
+        BUILDING_SCRIPT = "${BUILDING_SCRIPT_PATH}/build.sh"
+        BUILDING_LOG="${LOG_PATH}/build.log"
+        
+        ///Flashing    
+        FLASHING_SCRIPT_PATH = "${SCRIPT_AND_TOOLS}/00_Common/04_flashing"
+        FLASHING_SCRIPT = "${FLASHING_SCRIPT_PATH}/flash.sh"
+        DEVICE1_FLASH_OPTION=" -id 0 "   
+        DEVICE2_FLASH_OPTION=" -id 1 "
+        FLASHING_LOG_DEVICE_1="${LOG_PATH}/flash_device1.log"
+        FLASHING_LOG_DEVICE_2="${LOG_PATH}/flash_device2.log"
+        
+        ///Validation && Parsing
+        VALIDATION_PATH = "${SCRIPT_AND_TOOLS}/00_Common/05_validation"
+        VALIDATION_SCRIPT = "${VALIDATION_PATH}/validation.py"
+        VALIDATION_LOG = "${LOG_PATH}/validation.log"
+        VALIDATION_REPORT = "${LOG_PATH}/validationReport.xml"
+    }
+    
+    options
+    {
+        timeout(time: PIPELINE_TIMEOUT_IN_S, unit: 'SECONDS')
+    }
+       
+    stages
+    {
+        stage("Tool Information")
+        {      
+            steps 
+            {
+                script
+                {                
+                    StageTitle("Tool information")
+                    
+                    PrintToolVersion()
+                     
+                    SilentSh(
+                    '''
+                    echo "shell user is : \$(whoami), watch out for SSH credentials to match the username."
+                    echo "updating ssh known hosts"  
+                    ssh-keygen -R gerrit.st.com
+                    ssh-keygen -R codex.cro.st.com
+                    ssh-keyscan -t rsa gerrit.st.com >> ~/.ssh/known_hosts
+                    ssh-keyscan -t rsa codex.cro.st.com >> ~/.ssh/known_hosts
+                    ''')
+                                                            
+                }
+                
+                sleep(time: PIPELINE_DELAY_TRICK_IN_S,unit:"SECONDS")
+            }
+        }
+        
+        stage("Workspace Update")
+        {
+            steps 
+            {
+                script
+                {
+                    StageTitle("Setup environment")
+                    
+                    StepTitle("Init configuration variables")
+                    InitConfigurationVariable()
+                    
+                    StepTitle("Checking workspace folder structure")
+                    
+                    
+                    StepTitle("Gathering and updating scripts")
+                    ///are scripts available?
+
+                        echo "LLD tools folder does not exist "    
+                        
+                        SilentSh( '''            
+                        if [ ! -d "'''+JK_WORKSPACE+'''" ]; then
+                            echo "creating folder : $(basename ${JK_WORKSPACE})"
+                            mkdir -p '''+JK_WORKSPACE+'''
+                        fi
+                        if [ ! -d "'''+SCRIPT_AND_TOOLS+'''" ]; then
+                            mkdir -p '''+SCRIPT_AND_TOOLS+'''
+                        fi
+                        if [ ! -d "'''+LOG_PATH+'''" ]; then
+                            mkdir -p '''+LOG_PATH+'''
+                        fi
+                        ''')
+                    TimeLog("workspace folder ready")
+                    
+                    if(!fileExists(PROJECT_UPDATE_SCRIPT) || !fileExists(BUILDING_SCRIPT) || !fileExists(FLASHING_SCRIPT) || !fileExists(VALIDATION_SCRIPT))    
+                    {
+                        dir(SCRIPT_AND_TOOLS) 
+                        {
+                            sshagent(credentials: [SSH_KEY] ) 
+                            {
+                                echo "configuring LLD tools folder for git"
+                                SilentSh( '''
+                                git init
+                                git config core.sparseCheckout true    
+                                if [[ $(git branch -r | grep "origin/'''+SCRIPT_AND_TOOL_GIT_BRANCH+'''") && $(git remote -v | grep "origin") ]]; then
+                                    echo "url already exists, skipping."
+                                else
+                                    git remote add origin '''+SCRIPT_AND_TOOL_GIT_URL+'''
+                                fi
+                                echo '''+SCRIPT_AND_TOOL_GIT_PATH+'''> .git/info/sparse-checkout
+                                cat .git/info/sparse-checkout
+                                ''')
+                            }
+                        }
+                        echo "git folder configured"                    
+                    }
+
+                    dir(SCRIPT_AND_TOOLS) 
+                    {
+                        sshagent(credentials: [SSH_KEY] ) 
+                        {
+                            SilentSh( '''
+                            git fetch origin '''+SCRIPT_AND_TOOL_GIT_BRANCH+''' --depth 1
+                            git reset --hard origin/'''+SCRIPT_AND_TOOL_GIT_BRANCH+'''
+                            ''')
+                        }
+
+                        echo "moving scripts to right folder"
+    
+                        SilentSh( '''
+                        cp -r ./__INTERNAL__Validation_Projects/LLD_validation/* .
+                        rm -r ./__INTERNAL__Validation_Projects/
+                        #*/ closing string interpolated comment
+                        ''')
+                    }
+                    TimeLog("Scripts are now up to date")
+                   
+                    StepTitle("Configure build")
+                    TimeLog("Configuring build " )
+                    ConfigureBuild()
+                    TimeLog("Build configured:")
+                    PrintBuildConfig()
+                    ExpandConfigurationDependantVariables()
+                    TimeLog("Configuration-dependant environment variables expanded:")
+                    PrintConfigurationDependantVariables()
+                    
+                    StepTitle("Displaying information about Jenkins pipeline script")
+                    TimeLog("Checking jenkins script version and syntax")
+                    CheckPipelineScript()
+                    TimeLog("Jenkins script checked")
+                   
+                    StepTitle( "Updating projects")
+                    dir(PROJECT_UPDATE_PATH) 
+                    {
+                        RunShellScript(PROJECT_UPDATE_SCRIPT," -m0 update -m4 update ${PROJECT_UPDATE_SCRIPT_OPTION}",PROJECT_UPDATE_LOG)
+                    }
+                    TimeLog("workspace files are up to date")
+
+                }
+
+                sleep(time: PIPELINE_DELAY_TRICK_IN_S,unit:"SECONDS")
+            }
+        }
+        
+        stage("Build")
+        {
+            steps 
+            {
+                script
+                {
+                    StageTitle("Building LLD validation.")
+                    
+                    StepTitle("Building LLD validation for M0 and M4 cores with IAR toolchain")
+                    TimeLog("iar building script started")
+                    dir(BUILDING_SCRIPT_PATH) 
+                    {
+                        RunShellScript(BUILDING_SCRIPT," -iar -l ${LOG_PATH} " + BUILDING_SCRIPT_OPTION, BUILDING_LOG)
+                    }
+                    TimeLog("iar building script ended")
+                    
+                }
+
+                sleep(time: PIPELINE_DELAY_TRICK_IN_S,unit:"SECONDS")
+            }
+        }
+    
+        stage("Flash")
+        {
+            steps 
+            {
+                script
+                {
+                    StageTitle("Flashing LLD validation")
+                    
+                    StepTitle("Listing probes") 
+                    SilentSh(ST_LINK_UTILITY + ' -List')
+
+                    StepTitle( "Flashing for device 1")
+                    TimeLog("flashing script started")
+                    dir(FLASHING_SCRIPT_PATH) 
+                    {
+                        RunShellScript(FLASHING_SCRIPT, DEVICE1_FLASH_OPTION + FLASHING_SCRIPT_OPTION, FLASHING_LOG_DEVICE_1)
+                    }
+                    TimeLog("flashing script ended")
+
+                    StepTitle( "Flashing for device 2")
+                    TimeLog("flashing script started")
+                    dir(FLASHING_SCRIPT_PATH) 
+                    {
+                        RunShellScript(FLASHING_SCRIPT, DEVICE2_FLASH_OPTION + FLASHING_SCRIPT_OPTION, FLASHING_LOG_DEVICE_2)
+                    }
+                    TimeLog("flashing script ended")
+                    
+                }
+
+                sleep(time: PIPELINE_DELAY_TRICK_IN_S,unit:"SECONDS")
+            }
+        }
+        
+        stage("Validation")
+        {
+            steps 
+            {
+                script
+                {
+                    StageTitle("Running LLD validation campaign")
+                     
+                    StepTitle("Running script")
+                    TimeLog("validation script started")     
+                    RunPythonScript(PYTHON38,VALIDATION_SCRIPT,VALIDATION_SCRIPT_OPTION,VALIDATION_LOG)
+                    TimeLog("Validation script ended")
+        
+                }
+
+                sleep(time: PIPELINE_DELAY_TRICK_IN_S,unit:"SECONDS")
+            }
+        }
+        
+        stage("Display")
+        {
+            steps 
+            {
+                script
+                {
+                    StageTitle("Load and display data")
+                     
+                    StepTitle("JUnit report loaded for Test result analyzer plugin")
+                    if(!fileExists(VALIDATION_REPORT))
+                    {
+                        throw new Exception("error : junit report file does not exist")
+                    }                
+                    else
+                    {
+                        dir(LOG_PATH)
+                        {    
+                            VALIDATION_REPORT_BASENAME=sh(
+                                                        returnStdout: true,
+                                                        script:'''#!/bin/bash -e\n'''+"""basename ${VALIDATION_REPORT} | tr -d '\r' | tr -d '\n'"""
+                                                        )
+                            echo "validation report exists: " + VALIDATION_REPORT_BASENAME
+                            //SilentSh("""touch validationReport.xml""")// update timestamp for xml file in case file is too old (more than a couple of minutes)
+                            junit 'validationReport.xml'
+                        }
+                    }
+                    TimeLog("Validation report loaded")
+                }
+
+                sleep(time: PIPELINE_DELAY_TRICK_IN_S,unit:"SECONDS")
+            }
+        }
+            
+    } // stages
+    
+
+} // pipeline
+

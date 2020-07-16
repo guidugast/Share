@@ -1,0 +1,113 @@
+#!/bin/bash
+
+## global variables
+
+## global functions
+
+get_true_path(){ #path
+    local path=$1
+    readlink -m $path
+}
+
+display_center(){ #text, number_of_char
+    local text=$1
+    local number_of_char=$2
+    printf "%*s\n" $((($(echo $text | wc -c) + $number_of_char) / 2 )) "$text"
+    
+}
+
+display_big_banner() { #text
+    local text="$1"
+    
+    echo
+    echo
+    echo "##################################################################################"
+    echo "##################################################################################"
+    echo "####################                                         #####################"
+    display_center "$text" 82
+    echo "####################                                         #####################"
+    echo "##################################################################################"
+    echo "##################################################################################"
+    echo
+}
+
+display_small_banner() { #text
+    local text="$1"
+    
+    echo
+    echo
+    echo "========================================================================"
+    echo "======                                                            ======"
+    display_center "$text" 72                                            
+    echo "======                                                            ======"
+    echo "========================================================================"
+    echo
+}
+
+display_end_banner() { #text
+    local text="$1"
+    echo
+    echo "end of script."
+    echo "$text"
+    echo
+    echo
+    exit 0
+}
+
+print_error() { #text
+    local text=$1
+    echo "--> Error :  $text"
+}
+
+parse_st_link_error_code(){ ## to use just after a st link utility call
+    local error_code=$(echo $?)
+    if [[ ! $error_code = 0 ]]; then
+        case $error_code in
+            1) print_error "ST-Link : Command arguments error.";;
+            2) print_error "ST-Link : Connection problem.";;
+            3) print_error "ST-Link : Command not available for the connected target.";;
+            4) print_error "ST-Link : Error occurred while writing data to the specified memory address.";;
+            5) print_error "ST-Link : Cannot read memory from the specified memory address.";;
+            6) print_error "ST-Link : Cannot reset MCU.";;
+            7) print_error "ST-Link : Failed to run application.";;
+            8) print_error "ST-Link : Failed to halt the core.";;
+            9) print_error "ST-Link : Failed to halt the core.";;
+            10) print_error "ST-Link : Failed to set/clear a breakpoint.";;
+            11) print_error "ST-Link : Unable to erase one or more Flash sectors.";;
+            12) print_error "ST-Link : Flash programming/verification error.";;
+            13) print_error "ST-Link : Option bytes programming error.";;
+            *) print_error "ST-Link : Unexpected error $error_code"
+        esac
+        exit $error_code
+    fi
+}
+
+    
+flash_this() { #device_id, log_hex_file, target
+    ADDRESS_START_FLASH=0x08000000
+    OFFSET_M0=0x80000
+    ADDRESS_M0=$(($ADDRESS_START_FLASH+$OFFSET_M0))
+
+    local device_id=$1
+    local log_hex_file=$2
+    local target=$3
+    local address=$ADDRESS_START_FLASH
+    echo "--> Starting Address:  $(printf '0x%x\n' $address)"
+    
+    local path_length=$(echo -n "$log_hex_file" | wc -m)
+    echo "--> Warning, path length for ST-link-utility CLI must not exceed 194 char, current path length is $path_length."
+    MAX_PATH_TO_HEX=194
+    if [[ "$path_length" > "$MAX_PATH_TO_HEX" ]]; then
+        print_error "Path is too long, path to hex should not exceed 194 char. Change the path of your script workspace."
+        exit 1
+    fi
+    
+    [[ "$target" == "M0" ]] && address=$ADDRESS_M0
+    "$ST_LINK_UTILITY" -c ID=$device_id  UR swd
+    parse_st_link_error_code
+    "$ST_LINK_UTILITY" -c ID=$device_id  UR swd -halt -p $log_hex_file $address -V "after_programming"
+    parse_st_link_error_code
+    "$ST_LINK_UTILITY" -c ID=$device_id -Rst
+    parse_st_link_error_code
+    
+}

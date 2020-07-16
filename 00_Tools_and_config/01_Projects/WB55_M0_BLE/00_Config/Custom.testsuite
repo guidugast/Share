@@ -1,0 +1,6 @@
+#                                                               Test timeout (in minutes)
+#testcase name                                                  short, stress, endurance
+#-----------------------------------------------------------------------------------------------------------------------------------
+#RLV_TC__LLD_TXRX_chain__condRoutine_condition                           1
+#RLV_TC__LLD_GetStatus__noWakeupT2_betweenPackets                        1
+RLV_TC__LLD_TXRX_chain__condRoutine_selfLoop                            1

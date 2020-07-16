@@ -1,0 +1,57 @@
+from abc import ABCMeta, abstractmethod
+import shlex
+
+class Testcase(metaclass = ABCMeta):
+    def __init__(self, board_number,timeout):
+        self.board_number = board_number
+        self.timeout = timeout
+    
+    @abstractmethod
+    def do(self):
+        pass
+    
+    def run(self):
+        self.do()
+        self.__bing__()
+
+    def __bing__(self):
+        print(" dude! Testcase name is {}, number of board is {}, timeout is {}".format(self.__class__.__name__,self.board_number,self.timeout))
+
+class TC_PrintHello(Testcase):
+    def do(self):
+        print("hello")
+
+class TC_PrintBye(Testcase):
+    def do(self):
+        print("bye")
+
+class TC_PrintYo(Testcase):
+    def do(self):
+        print("Yo")
+        
+testsuitefile = [
+"""#testcase name           number of board(s) used      Test timeout (in minutes)""",
+"""TC_PrintHello            0                             5""",
+"""TC_PrintBye              8                             12""",
+"""TC_PrintYo              40                              """,
+"""TC_PrintYo              1                              1""",
+"""TC_PrintVoid             0                             5"""]
+
+testsuite = []
+
+for line in testsuitefile:
+    if '#' in line :
+        pass
+    else:
+        testsuite_extract = shlex.split(line)
+        if len(testsuite_extract) != 3:
+            print("Error in format ({})".format(line))
+        else:
+            try:
+                m = globals()[testsuite_extract[0]](testsuite_extract[1],testsuite_extract[2])
+                testsuite.append(m)
+            except:
+                print("Testcase not found ({})".format(testsuite_extract[0]))
+    
+for tc in testsuite:
+    tc.run()
