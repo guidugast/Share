@@ -195,15 +195,15 @@ DEF_TEST_array_x_t(uint8_t)
 int main()
 {
     array_uint8_t myParam = {0};
-    TEST_uint8_t(&myParam,"[]0x1,0x2,0x3}");             //E : wrong format                   O: OK V
-    TEST_uint8_t(&myParam,"[0x1,]{0x2,0x3}");            //E : wrong format                   O: KO 
-    TEST_uint8_t(&myParam,"[]0x1,{0x2,0x3}");            //E : wrong format                   O: OK V 
-    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3");             //E : wrong format                   O: OK V
-    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3}");            //E : [3]{0x01,0x02,0x03}            O: OK V
-    TEST_uint8_t(&myParam,"[2]{0x1,0x2,0x3,0x4}");       //E : [2]{0x01,0x02}                 O: OK V
-    TEST_uint8_t(&myParam,"[4]{0x1,0x2}");               //E : [4]{0x01,0x02,0x00,0x00}       O: OK V
-    TEST_uint8_t(&myParam,"[]{0xFF,0xFF,0xFF,0xFF}");    //E : [2]{0xFF,0xFF,0xFF,0xFF}       O: OK V
-    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3,Z}");          //E : wrong format + OxFF*4          O: OK V
+    TEST_uint8_t(&myParam,"[]0x1,0x2,0x3}");             //E : wrong format                   O: OK 
+    TEST_uint8_t(&myParam,"[0x1,]{0x2,0x3}");            //E : wrong format                   O: NOK, crashes program, 
+    TEST_uint8_t(&myParam,"[]0x1,{0x2,0x3}");            //E : wrong format                   O: OK 
+    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3");             //E : wrong format                   O: OK 
+    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3}");            //E : [3]{0x01,0x02,0x03}            O: OK 
+    TEST_uint8_t(&myParam,"[2]{0x1,0x2,0x3,0x4}");       //E : [2]{0x01,0x02}                 O: OK 
+    TEST_uint8_t(&myParam,"[4]{0x1,0x2}");               //E : [4]{0x01,0x02,0x00,0x00}       O: OK 
+    TEST_uint8_t(&myParam,"[]{0xFF,0xFF,0xFF,0xFF}");    //E : [2]{0xFF,0xFF,0xFF,0xFF}       O: OK 
+    TEST_uint8_t(&myParam,"[]{0x1,0x2,0x3,Z}");          //E : wrong format + OxFF*4          O: OK 
     TEST_uint8_t(&myParam,"[4]{0x1,0x2}");               //E : [4]{0x01,0x02,0x00,0x00}       O: OK
     TEST_uint8_t(&myParam,"[]{0x1}");                    //E : [1]{0x01}                      O: OK
     TEST_uint8_t(&myParam,"[]{0x1*}");                   //E : wrong format                   O: OK
