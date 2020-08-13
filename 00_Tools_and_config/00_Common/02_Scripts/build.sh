@@ -1,14 +1,19 @@
 #!/bin/bash
-BUILD_SCRIPT_VERSION=v0.55
+BUILD_SCRIPT_VERSION=v1.0.RC1
 
 #################################################
 ##########    DEFAULT CONFIGURATION    ##########
 #################################################
 print_cfg() {
+
+    if [[ ! -f "${IAR_PATH}" ]]; then
+        print_error "IAR exe not found, please change your path in Common.cfg"
+        exit 1
+    fi  
     echo "-------------------------------------"
     echo "-------     Config is :    ----------"
     echo "-------------------------------------"
-    echo "---- IAR toochain path : $(readlink -m """$IAR_PATH""")"
+    echo "---- IAR toochain path : $(readlink -m """${IAR_PATH}""")"
     echo "---- Workspace path : $(readlink -m """$WORKSPACE_ROOT_PATH""")"           # jenkins workspace path where LDD scripts are
     echo "---- Project path : $(readlink -m """$PROJECT_C_SOURCES_PATH""")"     # project files where sources are
     echo "---- Log path : $(readlink -m """$LOG_PATH""")"                       # output path to put log files
@@ -37,7 +42,7 @@ init_variables() {
 #################################################
 ##########         FUNCTIONS          ###########
 #################################################
-display_help() {  # TODO, update & clean this
+display_help() { 
     echo
     echo "*****************************************************************************"
     echo "*****************************************************************************"
@@ -157,8 +162,8 @@ build_iar_project() { #target_id, project_dir, project_name
     for config in ${ewp_configuration[@]}
     do
         reset_compil_var
-        
-        compilation_log_file=$(realpath  ${LOG_PATH}/build_TARGET_${target_id}.log)
+        compilation_log_file="${LOG_PATH}/build_TARGET_${target_id}.log"
+
         echo "" > "$compilation_log_file"
   
         echo "--> Building $project_name with configuration $config"
@@ -166,10 +171,10 @@ build_iar_project() { #target_id, project_dir, project_name
             echo "--> cleaning before build"
                 rm -rf "$project_dir/$config/*"
             echo "--> log file cleaned"
-            "$IAR_PATH" ${ewp_file} -clean $config $LOG_ALL 2>&1 >>  "$compilation_log_file"
+            "${IAR_PATH}" ${ewp_file} -clean $config $LOG_ALL 2>&1 >>  "$compilation_log_file"
         fi
         echo "--> compiling ..."
-        "$IAR_PATH" ${ewp_file} -make $config $LOG_ALL 2>&1 >>  "$compilation_log_file" 
+        "${IAR_PATH}" ${ewp_file} -make $config $LOG_ALL 2>&1 >>  "$compilation_log_file" 
         echo "--> Compilation log file can be found here: $(readlink -m $compilation_log_file)"
         echo "--> end of build"
 
@@ -181,12 +186,16 @@ build_iar_project() { #target_id, project_dir, project_name
 }
 
 build() { 
+    mkdir -p "${PROJECT_C_SOURCES_PATH}/${M4_TOP_DIR}"
+    
     if [[ -n "$M0_IAR_PROJECT" ]]; then
-        project_dir=$(realpath  ${PROJECT_C_SOURCES_PATH}/${M0_TOP_DIR}/$(dirname $M0_IAR_PROJECT))
-        project_name=$(basename $M0_IAR_PROJECT)
+        mkdir -p "${PROJECT_C_SOURCES_PATH}/${M0_TOP_DIR}"
+        project_dir="${PROJECT_C_SOURCES_PATH}/${M0_TOP_DIR}/$(dirname $M0_IAR_PROJECT)"
+        project_name="$(basename $M0_IAR_PROJECT)"
     elif [[ -n "$M4_IAR_PROJECT" ]];  then
-        project_dir=$(realpath ${PROJECT_C_SOURCES_PATH}/${M4_TOP_DIR}/$(dirname $M4_IAR_PROJECT))
-        project_name=$(basename $M4_IAR_PROJECT)
+        mkdir -p "${PROJECT_C_SOURCES_PATH}/${M0_TOP_DIR}"  
+        project_dir="${PROJECT_C_SOURCES_PATH}/${M4_TOP_DIR}/$(dirname $M4_IAR_PROJECT)"
+        project_name="$(basename $M4_IAR_PROJECT)"
     else
         print_error "No project specified, need at leats M0 or M4 "
         exit 1        
@@ -244,7 +253,7 @@ check_parameter() {
                ;;   
                
             -l | --log_path)
-               LOG_PATH=$(realpath  $2)
+               LOG_PATH=$2
                shift 2
                ;;
                
@@ -270,11 +279,6 @@ check_parameter() {
 }
 
 parse_build_option() {
-
-    if [[ -z "$(dirname $M0_IAR_PROJECT)" ]] && [[ -z "$(dirname $M4_IAR_PROJECT)" ]]; then
-        print_error "M0 or M4 project not specified, you need at least one project specified"
-        exit 1
-    fi
    
     if [[ -z "$PROJECT_C_SOURCES_PATH" ]]; then
         print_error "Project path not specified"
@@ -292,8 +296,8 @@ parse_build_option() {
 #################################################
 
 #we are in ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/
-WORKSPACE_ROOT_PATH=$(realpath  $(pwd)/../../..)
-COMMON_PATHS=$(realpath  ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths)
+WORKSPACE_ROOT_PATH=$(pwd)/../../..
+COMMON_PATHS=${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths
 
 source $COMMON_PATHS
 source $COMMON_LIB

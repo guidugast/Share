@@ -1,5 +1,5 @@
 #!/bin/bash
-FLASH_SCRIPT_VERSION=v0.23
+FLASH_SCRIPT_VERSION=v1.0.RC1
 
 
 #################################################
@@ -17,19 +17,24 @@ set_user_cfg() {
 
 print_cfg() {
 
-   echo "-------------------------------------" 
-   echo "-------     Config is :    ----------"
-   echo "-------------------------------------"
-   echo "---- ST-link utility path : $(readlink -m """$ST_LINK_UTILITY""")"   
-   echo "---- Project path : $(readlink -m """$PROJECT_C_SOURCES_PATH""")"     # project files where sources are
-   echo "---- Workspace path : $(readlink -m """$WORKSPACE_ROOT_PATH""")"      # jenkins workspace path where LDD scripts are
-   echo "---- Log path : $(readlink -m """$LOG_PATH""")"                       # output path to put log files
-   echo "---- M0 binary : $M0_BINARY_FILE"
-   echo "---- M4 binary : $M4_BINARY_FILE"
-   echo "---- Device Id: $DEVICE_ID"
-   echo "---- Flash script version : $FLASH_SCRIPT_VERSION"
-   echo "---- Flash script last update  : $(date -r ${COMMON_SCRIPTS_PATH}/flash.sh)"
-   echo "-------------------------------------"
+    if [[ ! -f "${ST_LINK_UTILITY}" ]]; then
+        print_error "ST-link-utility exe not found, please change your path in Common.cfg"
+        exit 1
+    fi  
+    
+    echo "-------------------------------------" 
+    echo "-------     Config is :    ----------"
+    echo "-------------------------------------"
+    echo "---- ST-link utility path : $(readlink -m """${ST_LINK_UTILITY}""")"   
+    echo "---- Project path : $(readlink -m """$PROJECT_C_SOURCES_PATH""")"     # project files where sources are
+    echo "---- Workspace path : $(readlink -m """$WORKSPACE_ROOT_PATH""")"      # jenkins workspace path where LDD scripts are
+    echo "---- Log path : $(readlink -m """$LOG_PATH""")"                       # output path to put log files
+    echo "---- M0 binary : $M0_BINARY_FILE"
+    echo "---- M4 binary : $M4_BINARY_FILE"
+    echo "---- Device Id: $DEVICE_ID"
+    echo "---- Flash script version : $FLASH_SCRIPT_VERSION"
+    echo "---- Flash script last update  : $(date -r ${COMMON_SCRIPTS_PATH}/flash.sh)"
+    echo "-------------------------------------"
 }
 
 ############################################################################
@@ -56,18 +61,19 @@ init_variables(){
 }
 
 set_ob() { #This function sets following Option Bytes : IPCCDBA, SBRV and SRAM2_RST
+
     echo
     echo "--> Setting Option bytes : "
     echo "  -  IPCCDBA to $IPCCDBA" 
     printf '  -  SBRV = 0x%x\n' $1    
     echo "  -  SRAM2_RST to $SRAM2_RST"
     echo ""
-    "$ST_LINK_UTILITY" -c ID=$DEVICE_ID UR swd -OB IPCCDBA=$IPCCDBA SBRV=$1 SRAM2_RST=$SRAM2_RST -Rst 
+    "${ST_LINK_UTILITY}" -c ID=$DEVICE_ID UR swd -OB IPCCDBA=$IPCCDBA SBRV=$1 SRAM2_RST=$SRAM2_RST -Rst 
     parse_st_link_error_code
     
     echo ""
     echo "--> Option bytes set, reading new option bytes " 
-    "$ST_LINK_UTILITY" -c ID=$DEVICE_ID UR swd -rOB
+    "${ST_LINK_UTILITY}" -c ID=$DEVICE_ID UR swd -rOB
     parse_st_link_error_code
     echo "--> end of option bytes config"
 }
@@ -106,7 +112,7 @@ set_memory_size() {
     fi
 }
 
-display_help() { # TODO, update & clean this
+display_help() {
     echo
     echo "*********************************************************************************************************************************"
     echo "*********************************************************************************************************************************"
@@ -140,17 +146,17 @@ flash() { #binary_file , target
         exit 1
     fi
     
-    hex_folder_path=$(realpath  $(dirname $binary_file))
-    map_folder_path=$(realpath  $hex_folder_path/../List)
+    hex_folder_path=$(dirname $binary_file)
+    map_folder_path=$hex_folder_path/../List
     echo "hex_folder_path : $(readlink -m $hex_folder_path)"
     echo "map_folder_path : $(readlink -m $map_folder_path)"
     
     
     echo "--> Copying hex, and map in the log folder"
-    built_hex_file=$(realpath  $hex_folder_path/${application_name}.hex)
-    built_map_file=$(realpath  $map_folder_path/${application_name}.map)
-    log_hex_file=$(realpath  $LOG_PATH/${application_name}.hex)
-    log_map_file=$(realpath  $LOG_PATH/${application_name}.map)
+    built_hex_file=$hex_folder_path/${application_name}.hex
+    built_map_file=$map_folder_path/${application_name}.map
+    log_hex_file=$LOG_PATH/${application_name}.hex
+    log_map_file=$LOG_PATH/${application_name}.map
     echo "built_hex_file : $(readlink -m $built_hex_file)"
     echo "built_map_file : $(readlink -m $built_map_file)"
     echo "log_hex_file : $(readlink -m $log_hex_file)"
@@ -209,7 +215,7 @@ check_parameter() {
                 ;;   
                
             -l | --log_path)
-               LOG_PATH=$(realpath  $2)
+               LOG_PATH=$2
                shift 2
                ;;
                
@@ -234,8 +240,8 @@ check_parameter() {
 parse_flash_option() {
     
     if [[ "$M0_FLASH" = "1" ]] || [[ "$M4_FLASH" = "1" ]]; then
-        M0_BINARY_FILE=$(realpath  $PROJECT_C_SOURCES_PATH/$M0_TOP_DIR/$M0_BINARY_FILE)
-        M4_BINARY_FILE=$(realpath  $PROJECT_C_SOURCES_PATH/$M4_TOP_DIR/$M4_BINARY_FILE)
+        M0_BINARY_FILE=$PROJECT_C_SOURCES_PATH/$M0_TOP_DIR/$M0_BINARY_FILE
+        M4_BINARY_FILE=$PROJECT_C_SOURCES_PATH/$M4_TOP_DIR/$M4_BINARY_FILE
         
 
         if [[ ! -f "$M0_BINARY_FILE" ]] && [[ "$M0_FLASH" = "1" ]]; then
@@ -280,8 +286,8 @@ flash_device() {
 #################################################
 
 #we are in ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/
-WORKSPACE_ROOT_PATH=$(realpath  $(pwd)/../../..)
-COMMON_PATHS=$(realpath  ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths)
+WORKSPACE_ROOT_PATH=$(pwd)/../../..
+COMMON_PATHS=${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths
 
 source $COMMON_PATHS
 source $COMMON_LIB

@@ -1,7 +1,6 @@
 #!/bin/sh
 
 
-
 #PROJECT_NAME = $1
 if [[ -z "$1" ]]; then
     echo "No project name given as first script argument."
@@ -10,25 +9,26 @@ else
     PROJECT_NAME=$1
 fi
 
-
-#BUILD_ID = $2
-if [[ -z "$2" ]]; then
-    #standalone build
-    BUILD_ID="""$(date +"%Y%m%d%H%M")_standalone"""
-else
-    #full manual or full auto builds
-    BUILD_ID=$2
-fi
-
 #we are in ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/02_User_shortcuts/
-WORKSPACE_ROOT_PATH=$(realpath  $(pwd)/../..)	
-PROJECT_PATHS=$(realpath  ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Project.paths)
+WORKSPACE_ROOT_PATH=$(pwd)/../..
+PROJECT_PATHS=${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Project.paths
 
 source $PROJECT_PATHS 
 source $COMMON_CFG
 source $COMMON_LIB
 source $PROJECT_CFG
 
+display_big_banner "Project binaries build"
+
+#BUILD_ID = $2
+if [[ -z "$2" ]]; then
+    #standalone build
+    BUILD_ID="""$(date +"%Y%m%d%H%M")_standalone"""
+    display_test_env_version
+else
+    #full manual or full auto builds
+    BUILD_ID=$2
+fi
 
 if [[ ! -f "$PROJECT_C_SOURCES_PATH/$M0_TOP_DIR/$M0_IAR_PROJECT" ]]; then
     echo "M0 project file does not exist ($(basename $M0_IAR_PROJECT))"
@@ -44,7 +44,6 @@ fi
 mkdir -p $LOG_PATH  
 
 
-display_big_banner "Project binaries build"
 
 cd ${COMMON_SCRIPTS_PATH}
 

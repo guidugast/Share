@@ -29,7 +29,7 @@ fi
 mkdir -p 00_Tools_and_config
 cp -ra ${PWD}/stm32wb_ate/* ${PWD}/00_Tools_and_config/
 cp -ra ${PWD}/stm32wb_ate/. ${PWD}/00_Tools_and_config/
-#rm -rf ${PWD}/stm32wb_ate/ 
+rm -rf ${PWD}/stm32wb_ate/ 
 mkdir -p 01_C_Sources/
 cd 00_Tools_and_config/
 echo "--> Test environment ready!"

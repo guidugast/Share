@@ -1,17 +1,15 @@
 #!/bin/bash
 
-COMMON_PATHS=$(realpath  ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths)
+COMMON_PATHS="${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths"
 source $COMMON_PATHS
 
 # paths
-PROJECT_CONFIG_PATH=$(realpath ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/01_Projects/${PROJECT_NAME}/00_Config)
-PROJECT_C_SOURCES_PATH=$(realpath ${WORKSPACE_ROOT_PATH}/01_C_Sources/${PROJECT_NAME})
-LOG_PATH=$(realpath ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/01_Projects/${PROJECT_NAME}/01_Logs/${BUILD_ID}) 
+PROJECT_CONFIG_PATH="${WORKSPACE_ROOT_PATH}/00_Tools_and_config/01_Projects/${PROJECT_NAME}/00_Config"
+PROJECT_C_SOURCES_PATH="${WORKSPACE_ROOT_PATH}/01_C_Sources/${PROJECT_NAME}"
+LOG_PATH="${WORKSPACE_ROOT_PATH}/00_Tools_and_config/01_Projects/${PROJECT_NAME}/01_Logs/${BUILD_ID}" 
 
 # files
-PROJECT_CFG=$(realpath  ${PROJECT_CONFIG_PATH}/Project.cfg)
+PROJECT_CFG="${PROJECT_CONFIG_PATH}/Project.cfg"
 source  $PROJECT_CFG
-MANIFEST_CFG=$(realpath ${PROJECT_CONFIG_PATH}/${MANIFEST})
-VALIDATION_TESTSUITE=$(realpath ${PROJECT_CONFIG_PATH}/${TESTSUITE})
-TESTCASES_LIST=$(realpath ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/01_Projects/${PROJECT_NAME}/02_Testcases/TestCasesList.py)
-
+MANIFEST_CFG="${PROJECT_CONFIG_PATH}/${MANIFEST}"
+VALIDATION_TESTSUITE="${PROJECT_CONFIG_PATH}/${TESTSUITE}"

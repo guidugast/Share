@@ -1,13 +1,15 @@
 #                                                               Test timeout (in minutes)
 #testcase name                                                  short, stress, endurance
 #-----------------------------------------------------------------------------------------------------------------------------------
-#RLV_TC__LLD_Init__nominal                                           1
+RLV_TC__LLD_Init__nominal                                           1
+
+
 #RLV_TC__HAL_TXRX_NoAck__limits_payloadLength_max                    1
 #RLV_TC__HAL_TXRX_Stress_NoAck__onlyTx                               1
 #RLV_TC__HAL_TXRX_PingPongStress_NoAck__nominal                      1
 #RLV_TC__HAL_TXRX_Stress_WithEncrypt_NoAck__nominal                  1
-RLV_TC__HAL_TXRX_WithAck__rssiOnAllChannels                         1
-RLV_TC__HAL_TXRX_NoAck__rssiOnAllChannels                           1
+#RLV_TC__HAL_TXRX_WithAck__rssiOnAllChannels                         1
+#RLV_TC__HAL_TXRX_NoAck__rssiOnAllChannels                           1
 #RLV_TC__LLD_TxPower_simpleTx                                        1
 #RLV_TC__HAL_TXRX_WithEncrypt_Ack__nominal                           1
 #RLV_TC__LLD_TXRX_chain__condRoutine_selfLoop                        1

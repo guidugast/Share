@@ -9,10 +9,16 @@ get_true_path(){ #path
     readlink -m $path
 }
 
-display_center(){ #text, number_of_char
+display_center(){ #text, number_of_char, before, after
     local text=$1
     local number_of_char=$2
-    printf "%*s\n" $((($(echo $text | wc -c) + $number_of_char) / 2 )) "$text"
+    local before=$3
+    local after=$4
+    local stringLength=$(echo $text | wc -c)
+    printf "%s" "$before"
+    printf "%*s" $((($stringLength + $number_of_char) / 2 )) "$text"
+    printf "%*s" $(($number_of_char/2 - $stringLength/2)) " "
+    printf "%s\n" "$after"
     
 }
 
@@ -23,9 +29,9 @@ display_big_banner() { #text
     echo
     echo "##################################################################################"
     echo "##################################################################################"
-    echo "####################                                         #####################"
-    display_center "$text" 82
-    echo "####################                                         #####################"
+    echo "#####                                                                       ######"
+    display_center "$text" 78 "##" "##"
+    echo "#####                                                                       ######"
     echo "##################################################################################"
     echo "##################################################################################"
     echo
@@ -38,7 +44,7 @@ display_small_banner() { #text
     echo
     echo "========================================================================"
     echo "======                                                            ======"
-    display_center "$text" 72                                            
+    display_center "$text" 68 "==" "=="                                            
     echo "======                                                            ======"
     echo "========================================================================"
     echo
@@ -82,7 +88,19 @@ parse_st_link_error_code(){ ## to use just after a st link utility call
     fi
 }
 
-    
+display_test_env_version(){
+    echo ""
+    echo "+------------------------------------------------------------------------+"
+    display_center "Current test environment" 72 "|" "|"                                            
+    echo "+------------------------------------------------------------------------+"
+    branchOrTag=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)
+    display_center "$branchOrTag" 55 "|   -> branch/tag:" "|"              
+    sha_1=$(git rev-parse --verify HEAD)
+    display_center "$sha_1"  60 "|   -> sha-1:" "|"              
+    echo "+------------------------------------------------------------------------+"
+    echo ""
+}
+
 flash_this() { #device_id, log_hex_file, target
     ADDRESS_START_FLASH=0x08000000
     OFFSET_M0=0x80000
@@ -102,12 +120,16 @@ flash_this() { #device_id, log_hex_file, target
         exit 1
     fi
     
+    if [[ ! -f "${ST_LINK_UTILITY}" ]]; then
+        print_error "ST-link-utility exe not found, please change your path in Common.cfg"
+        exit 1
+    fi    
     [[ "$target" == "M0" ]] && address=$ADDRESS_M0
-    "$ST_LINK_UTILITY" -c ID=$device_id  UR swd
+    "${ST_LINK_UTILITY}" -c ID=$device_id  UR swd
     parse_st_link_error_code
-    "$ST_LINK_UTILITY" -c ID=$device_id  UR swd -halt -p $log_hex_file $address -V "after_programming"
+    "${ST_LINK_UTILITY}" -c ID=$device_id  UR swd -halt -p $log_hex_file $address -V "after_programming"
     parse_st_link_error_code
-    "$ST_LINK_UTILITY" -c ID=$device_id -Rst
+    "${ST_LINK_UTILITY}" -c ID=$device_id -Rst
     parse_st_link_error_code
     
 }

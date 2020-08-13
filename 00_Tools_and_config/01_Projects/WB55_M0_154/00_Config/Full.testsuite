@@ -1,0 +1,27 @@
+#                                                               Test timeout (in minutes)
+#testcase name                                                  short
+#-----------------------------------------------------------------------------------------------------------------------------------
+LLD_CLI_TC_registerAccess                                        10
+LLD_CLI_TC_api                                                   10
+LLD_CLI_TC_standaloneTraffic                                     10
+LLD_CLI_TC_txRxNominal                                           10
+LLD_CLI_TC_interference                                          10
+LLD_CLI_TC_txRxFiltering                                         10
+LLD_CLI_TC_lowPower                                              10
+LLD_CLI_TC_txRx_shortBurts_withoutAck_txIdle                     10
+LLD_CLI_TC_txRx_longBurts_withoutAck_txIdle                      10
+LLD_CLI_TC_txRx_shortBurts_withAck_txIdle                        10
+LLD_CLI_TC_txRx_longBurts_withAck_txIdle                         10
+LLD_CLI_TC_txRx_shortBurts_withoutAck_rx                         10
+LLD_CLI_TC_txRx_longBurts_withoutAck_rx                          10
+LLD_CLI_TC_txRx_shortBurts_withAck_rx                            10
+LLD_CLI_TC_txRx_longBurts_withAck_rx                             10
+LLD_CLI_TC_txRx_encryptedFrames                                  10
+LLD_CLI_TC_txRx_shortBurts_withoutAck_robustness                 10
+LLD_CLI_TC_txRx_longBurts_withoutAck_robustness                  10
+LLD_CLI_TC_txRx_shortBurts_withAck_robustness                    10
+LLD_CLI_TC_txRx_longBurts_withAck_robustness                     10
+LLD_CLI_TC_txRx_macFrameSizes_withoutAck                         10
+LLD_CLI_TC_txRx_macFrameSizes_withAck                            10
+LLD_CLI_TC_txRx_pendingBits                                      10
+LLD_CLI_TC_txRx_channelChange                                    10

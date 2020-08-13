@@ -1,5 +1,5 @@
 #!/bin/bash
-GIT_SCRIPT_VERSION=v0.71
+GIT_SCRIPT_VERSION=v1.0.RC1
 
 #################################################
 ##########    DEFAULT CONFIGURATION    ##########
@@ -53,7 +53,7 @@ fetch_this_module() { # module_name, module_version, module_git_url, module_outp
     local module_name=$1
     local module_version=$2
     eval local module_git_url=$3
-    local module_output_path=$(realpath  $4)
+    local module_output_path=$4
     local sha_1=$5
 
     cd $module_output_path
@@ -124,7 +124,7 @@ fetch_this_module() { # module_name, module_version, module_git_url, module_outp
             exit 1
         fi
     else
-        echo "sha-1 field is: $sha_1, len is $(echo -n $sha_1 | wc -m)" #TODO to be removed
+        #echo "sha-1 field is: $sha_1, len is $(echo -n $sha_1 | wc -m)"
         if [[ $mode = "branch" ]]; then
             echo "checkout to end of specified branch"        
             git reset --hard r_${module_name}/$module_version
@@ -142,7 +142,7 @@ clone_this_module() { # module_version, module_git_url, module_output_path, sha_
     local module_name=$1
     local module_version=$2
     eval local module_git_url=$3
-    local module_output_path=$(realpath  $4)
+    local module_output_path=$4
     local sha_1=$5
     
     if [ ! -d "$module_output_path" ]; then
@@ -165,7 +165,7 @@ git_work_this_module() { #core_name, module_name, module_version, module_git_url
     local module_name=$2
     local module_version=$3
     eval local module_git_url=$4
-    local module_output_path=$(realpath  $5)
+    local module_output_path=$5
     local sha_1=$6
     local git_work="do_nothing"
     
@@ -251,7 +251,7 @@ display_help() {
     echo "*     --output_custom_path | -o  <output_custom_path>             Output/workspace path for git repositories.                           *"
     echo "*                                                                 $PROJECT_C_SOURCE_PATH by default  "
     echo "*     --ssh_username | -u  <ssh_username>                         SSH user name for git access. User's shell loggin by default          *"
-    echo "*     --shallow_clone | -s  <ssh_username>                        enable shallow clone when reading project only (like with jenkins)    *"
+    echo "*     --shallow_clone | -s                                        enable shallow clone when reading project only (like with jenkins)    *"
     echo "*     -m0 <job>                                                   to update, clean or get git status for M0 sources                     *"
     echo "*     -m4 <job>                                                   to update, clean or get git status for M4 sources                     *"
     echo "*                                                                 job can be 'update', 'clean' or 'status'                              *"
@@ -325,7 +325,7 @@ add_module() { #core_name, module_name,module_version, module_git_url,module_out
     local module_name=$2
     local module_version=$3
     eval local module_git_url=$4
-    local module_output_path=$(realpath  $5)
+    local module_output_path=$5
     local sha_1=$6
 
     MODULE_LIST[$MODULE_NUMBER]="$core_name;$module_name;$module_version;$module_git_url;$module_output_path;$sha_1"
@@ -341,28 +341,23 @@ parse_update_options() {
     fi
     
     MAX_CHAR_FOR_IAR_DEEPEST_PATH=75
-    local path_string=$(realpath  $(readlink -m $PROJECT_C_SOURCE_PATH/$M4_TOP_DIR))
+    local path_string=$(readlink -m $PROJECT_C_SOURCE_PATH/$M4_TOP_DIR)
     eval local path_length="$(echo -n $path_string | wc -m)"
     if [[ "$path_length" > "$MAX_CHAR_FOR_IAR_DEEPEST_PATH" ]]; then
         print_error "Please move your test env folder closer to the root, project path ($path_string) too long: Current path length(=$path_length) > Max path length(=$MAX_CHAR_FOR_IAR_DEEPEST_PATH)" 
         exit 1
     fi
-    
-    if [[ "$(basename $SHOULD_NOT_BE_LLD_VALIDATION_FOLDER)" == "LLD_validation" ]]; then
-        print_error "DO NOT use this script in this folder, create a workspace folder, and launch the script that inits the folder (check in the README.md)" 
-        exit 1
-    fi
+
 }
 
 
 #################################################
 ##########            MAIN            ###########
 #################################################
-SHOULD_NOT_BE_LLD_VALIDATION_FOLDER=$(realpath  $(pwd)/../..)
 
 #we are in ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/
-WORKSPACE_ROOT_PATH=$(realpath  $(pwd)/../../..)
-COMMON_PATHS=$(realpath  ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths)
+WORKSPACE_ROOT_PATH=$(pwd)/../../..
+COMMON_PATHS=${WORKSPACE_ROOT_PATH}/00_Tools_and_config/00_Common/02_Scripts/Common.paths
 
 source $COMMON_PATHS
 source $COMMON_LIB

@@ -10,11 +10,11 @@ echo "-------------------------------------------"
 echo ""
 echo ""
 echo "Reseting device 1"
-"$ST_LINK_UTILITY" -c ID=0 -Rst
+"${ST_LINK_UTILITY}" -c ID=0 -Rst
 parse_st_link_error_code
 
 echo "Reseting device 2"
-"$ST_LINK_UTILITY" -c ID=1 -Rst
+"${ST_LINK_UTILITY}" -c ID=1 -Rst
 parse_st_link_error_code
 
 

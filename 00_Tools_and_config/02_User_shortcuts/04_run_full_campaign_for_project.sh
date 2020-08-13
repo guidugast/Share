@@ -1,20 +1,12 @@
 #!/bin/sh
 
+
 #PROJECT_NAME = $1
 if [[ -z "$1" ]]; then
     echo "No project name given as first script argument."
     exit 1
 else
     PROJECT_NAME=$1
-fi
-
-#BUILD_ID = $2
-if [[ -z "$2" ]]; then
-    #standalone build
-    BUILD_ID="""$(date +"%Y%m%d%H%M")_standalone"""
-else
-    #full manual or full auto builds
-    BUILD_ID=$2
 fi
 
 #we are in ${WORKSPACE_ROOT_PATH}/00_Tools_and_config/02_User_shortcuts/
@@ -27,6 +19,29 @@ source $COMMON_LIB
 source $PROJECT_CFG
 
 
+display_big_banner "Starting validation campaign with selected Testsuite"
+
+FROM_JENKINS="false"
+
+#BUILD_ID = $2
+if [[ -z "$2" ]]; then
+    echo "standalone manual build"
+    BUILD_ID="""$(date +"%Y%m%d%H%M")_standalone"""
+    display_test_env_version
+else
+    BUILD_ID=$2
+    
+    #FROM_JENKINS = $3
+    if [[ ! -z "$3" ]]; then
+        echo "Jenkins build"
+        FROM_JENKINS="true"
+    else
+        echo "full manual build" 
+    fi
+fi
+
+LOG_PATH="${WORKSPACE_ROOT_PATH}/00_Tools_and_config/01_Projects/${PROJECT_NAME}/01_Logs/${BUILD_ID}"
+
 if [[ ! -f "$VALIDATION_TESTSUITE" ]]; then
     echo "No testsuite was given in the project config folder"
     exit 1
@@ -34,13 +49,19 @@ fi
 
 mkdir -p $LOG_PATH  
 
-display_big_banner "Starting validation campaign with selected Testsuite"
 
-cd ${COMMON_SCRIPTS_PATH}
+
+export PYTHONPATH="$WORKSPACE_ROOT_PATH/00_Tools_and_config/00_Common/02_Scripts:$WORKSPACE_ROOT_PATH/00_Tools_and_config/01_Projects/${PROJECT_NAME}/02_Validation"
+
+cd ${COMMON_SCRIPTS_PATH}/UATL_generic
 echo "Work in progress... please wait."
 while true
 do
-    ${PYTHON38} -u validation.py -t "${VALIDATION_TESTSUITE}" -u "${ST_LINK_UTILITY}" -r "${LOG_PATH}" 2>&1 | tee -a "${LOG_PATH}/validationReport.log"
+    if [[ "${FROM_JENKINS}" = "false" ]]; then
+        ${PYTHON38} -u main.py -t "${VALIDATION_TESTSUITE}" -u "${ST_LINK_UTILITY}" -r "${LOG_PATH}" 2>&1 | tee -a "${LOG_PATH}/validationReport.log"
+    else
+        ${PYTHON38} -u main.py -t "${VALIDATION_TESTSUITE}" -u "${ST_LINK_UTILITY}" -r "${LOG_PATH}" 2>&1 | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | tee -a "${LOG_PATH}/validationReport.log"
+    fi
     ret=${PIPESTATUS[0]}
     if [[ $ret -eq 0 ]]; then 
         echo "Script exited with no error"

@@ -1,26 +1,18 @@
 STM32WB - ATE (Automatic Test Environment) GUIDELINE
 ============
 
-
-## TODO:
----
-    TO BE WRITTEN
-
 ## Overview
 ---
 
 ### Historical 
 *   this file was created in early 2020 for the validation projects of the radio LLD of the STM32WBx5
 
-### Project overview
+### Project
 *   The aim of this project is to provide an easy and fast way for writing tests, and keeping test procedure implementation flexible, and then easily automating tests through console or jenkins
 *   There is two ways of using this environment: Shortcuts (console) or Jenkins 
 
 ## How to?
 ---
-
-###   Run the project with jenkins
-    TO BE WRITTEN
     
 ###  Run a validation campaign by choosing module versions
     1. Create your workspace in folder that should not be a git folder, and rather be empty, and rather be close to root like C:/STM32WB_WORKSPACE/ or C:/AUTOMATIC_TESTS/
@@ -50,18 +42,19 @@ STM32WB - ATE (Automatic Test Environment) GUIDELINE
 
     6. Configure your manifest:
     
-    6.1 Correct, update, or create your manifest "<manifest_name>.manifest" in ./00_Tools_and_config/01_Projects/<project_name>/00_Config/<manifest_name>.manifest
-        
-    6.2 Configure your project here: ./00_Tools_and_config/01_Projects/<project_name>/00_Config/Project.cfg
+    6.1 If needed, correct, update, or create your manifest "<manifest_name>.manifest" in ./00_Tools_and_config/01_Projects/<wb-ate_project_name>/00_Config/<manifest_name>.manifest
+        --> to add a module, add the following line: ```add_module ${core_name} ${module_name} ${module_version} ${module_git_url} ${module_output_path} ${sha_1 (optional)}  ```
+
+    6.2 Configure your project here: ```./00_Tools_and_config/01_Projects/<wb-ate_project_name>/00_Config/Project.cfg```
     Pick the manifest you want:
     MANIFEST=<manifest_name>.manifest
 
     7. Configure your testsuite:
     
-    7.1 Correct, update, or create your testsuite "<testsuite_name>.testsuite" in ./00_Tools_and_config/01_Projects/<project_name>/00_Config/<testsuite_name>.testsuite
+    7.1 If needed, correct, update, or create your testsuite "<testsuite_name>.testsuite" in ```./00_Tools_and_config/01_Projects/<wb-ate_project_name>/00_Config/<testsuite_name>.testsuite```
         --> comment with '#' the lines of the TC you don't want
         
-    7.2 Configure your project here: ./00_Tools_and_config/01_Projects/<project_name>/00_Config/Project.cfg
+    7.2 Configure your project here: ```./00_Tools_and_config/01_Projects/<wb-ate_project_name>/00_Config/Project.cfg```
     Pick the testsuite you want:
     TESTSUITE=<testsuite_name>.testsuite
     
@@ -72,7 +65,7 @@ STM32WB - ATE (Automatic Test Environment) GUIDELINE
     9. then either (9.1) or (9.2):
 
     9.1 run full build :
-        > cd ./00_Tools_and_config/02_User_shortcuts/ && ./00_full_build_for_project.sh <project_name>
+        > cd ./00_Tools_and_config/02_User_shortcuts/ && ./00_full_build_for_project.sh <wb-ate_project_name>
 
     9.2 run each step (source update, build, flash, validation) separately, starting by step 1 (script 01_xxxx)
     Go in 02_User_shortcuts/ folder to launch each script by using the following syntax: 
@@ -101,77 +94,11 @@ STM32WB - ATE (Automatic Test Environment) GUIDELINE
     Apply previous procedure by using your own testsuite.
     Create your own testsuite file "<Testsuite_name>.testsuite" or use Custom.testsuite rather than using existing testsuites to avoid commiting by mistake changes
     Comment with '#' the lines of the TC you don't want
-
-###   Modify a testcase (in python)
-    TO BE WRITTEN (UATL.py need to be splitted first)
-    
-###   Create a custom project (for jenkins and UATL)
-    TO BE WRITTEN
     
 ###   Modify/Create a baseline
-    Modifiy the git manifest here ./00_Tools_and_config/01_Projects/<project_name>/00_Config/Baseline.manifest
+    Modifiy the git manifest here ```./00_Tools_and_config/01_Projects/<wb-ate_project_name>/00_Config/Baseline.manifest```
       or create your own <baseline_name>.manifest
     In a baseline, all modules shall be either tag or sha-1
     
     --> After committing && push this new folder in the test env repo. add a tag to it '<baseline_name>.baseline'
-
-    
-###   Configure your environment
-    TO BE WRITTEN
-
-###   Configure your project
-    TO BE WRITTEN
-
-## Scripts
----
-
-### Script types
-*   library (.sh, .py)
-*   configuration file (.cfg)
-*   script with "project name" as an argument: ```./script.xx "project name"```, configurable by project config files (common and/or project cfg), to be run in "${workspace}/00_Tools_and_config/02_User_shortcuts"
-*   script with no argument, ```./_script.xx ``` configurable by modifiying the script itself : ```./script.xx```, to be run in "${workspace}/00_Tools_and_config/03_Advanced_user_shorcuts"
-*   script with no argument, ```./script.xx ```, special behavior, please refer to this documentation
-*   Description ### TODO: translate
-    Au niveau des scripts manuels, qui peuvent être lancés individuellement ou de manière automatique, et qui ont des paramètres à rentrer:
-    - scripts shells project update: pour mettre à jour en fonction d'UN git manifest (liste de couples module/version) le code source du projet 
-    - scripts shell de build : pour builder UN code en un couple de binaires m0/m4
-    - scripts shell de flash : pour flasher UN couple de binaire dans une liste prédéfinie de board (pour RLV v1 c'est le même binaire pour toutes les boards)
-    - scripts pythons: pour automatiser l'envoi de commande de test vers le binaire afin de lancer les tests et de parser les résultats pour les traduire au format jenkins
-
-    Il existe un script qui va mettre à jour les scripts ci dessus en allant chercher dans la DB git:
-    - scripts shells environement update: pour mettre à jour les outils projets (buid, flash, validation,...)
-
-    Il existe un certain nombre de scripts faciles d'utilisation, ce sont les scripts shell "shortcuts"
-    qui sont des "alias", c-à-d un script simple d'appel sans argument appelant un script complexe avec arguments 
-    chaque script shortcut correspond à une action simple:
-    - "reset all boards"
-    - update project
-    - build project
-    - flash project
-    - validate project
-
-    Au niveau de l'automatisation ces scripts utilisent les scripts ci-dessus:
-    - un script shell d'automatisation du build complet lançable depuis un poste local :
-        - MAJ des sources projet
-        - build
-        - flash
-        - lancement des test
-        - affichage terminal des résultats sur le terminal
-        - parsing des résultats pour traduction vers jenkins (.xml) et vers fichier xls (.csv)
-    - un script jenkins pipeline d'automatisation du build complet étendu lançable depuis un serveur:
-        - MAJ de l'environnement
-        - MAJ des sources projet
-        - build
-        - flash
-        - lancement des test
-        - affichage terminal des résultats sur le terminal
-        - parsing des résultats pour traduction vers jenkins
-        - affichage sous jenkins des courbes en fonction du temps
-
-### Test env
-*   test env creation script 'init_LLD_valid_env_in_this_folder.sh', to be run in the folder where you want to create your test env, shall be close to root
-*   test env update script 'update_scripts.sh', to be run in ${workspace}/00_Tools_and_config/
-
-### Shortcuts
-*   find it here : "${workspace}/00_Tools_and_config/02_User_shortcuts"
 
